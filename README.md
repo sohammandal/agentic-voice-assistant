@@ -69,13 +69,13 @@ agentic-voice-assistant/
    uv tool install pre-commit
    ```
 
+   > This installs Git hooks so checks run automatically on every commit - you only need to do this once.
+
 5. **(Optional) Run pre-commit on all files:**
 
    ```bash
    pre-commit run --all-files
    ```
-
-   > This installs Git hooks so checks run automatically on every commit - you only need to do this once.
 
 6. **Run the app (starter):**
 
