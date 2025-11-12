@@ -10,3 +10,6 @@ dependencies = [
     "pandas>=2.3.3",
     "streamlit>=1.51.0",
 ]
+
+[tool.uv]
+dev-dependencies = ["pre-commit", "ruff"]

@@ -64,6 +64,9 @@ agentic-voice-assistant/
 
    ```bash
    pre-commit install
+   
+   # if pre-commit is missing then run this first
+   uv tool install pre-commit
    ```
 
 5. **(Optional) Run pre-commit on all files:**
