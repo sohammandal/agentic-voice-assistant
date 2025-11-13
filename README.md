@@ -93,6 +93,35 @@ After the initial setup, hooks run automatically on changed files during `git co
 
 ---
 
+### Adding a New Package/Dependency
+
+If you need to add a package to the project:
+
+```bash
+# 1. Add the package (updates pyproject.toml and uv.lock)
+uv add <package-name>
+
+# example:
+# uv add scikit-learn
+```
+
+`uv` will automatically install the package and make sure all dependencies stay compatible.
+
+Finally, commit the updated files:
+
+```bash
+git add pyproject.toml uv.lock
+git commit -m "Add <package-name>"
+```
+
+Everyone else should pull the changes and run:
+
+```bash
+uv sync
+```
+
+---
+
 ## Tech Stack
 
 | Layer        | Tool                                |
