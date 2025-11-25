@@ -209,3 +209,6 @@ __marimo__/
 # Data stuff:
 data/*
 !data/.gitkeep
+
+# Vector store 
+vector_store_*/
