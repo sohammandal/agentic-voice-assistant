@@ -25,7 +25,7 @@ from typing import Any, Dict, List
 
 from groq import Groq
 
-from config import GROQ_API_KEY, GROQ_MODEL_NAME, LLM_MAX_TOKENS, LLM_TEMPERATURE
+from src.config import GROQ_API_KEY, GROQ_MODEL_NAME, LLM_MAX_TOKENS, LLM_TEMPERATURE
 
 # ------------------------------------------------------------------------------
 # Initialize Groq Client
@@ -63,4 +63,4 @@ def llm_chat(
         max_tokens=max_tokens,
     )
 
-    return response.choices[0].message["content"]
+    return response.choices[0].message.content

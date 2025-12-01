@@ -42,7 +42,7 @@ WEB_SEARCH_MIN_INTERVAL = 1.0
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 # Your selected model
-GROQ_MODEL_NAME = "llama3-70b-8192"
+GROQ_MODEL_NAME = "llama-3.3-70b-versatile"
 
 # Default temperature / max tokens for agent reasoning
 LLM_TEMPERATURE = 0.3

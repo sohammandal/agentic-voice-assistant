@@ -43,9 +43,10 @@ from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb.config import Settings
-from schemas import RagProduct
 
-from config import CHROMA_COLLECTION_NAME, DEFAULT_TOP_K_RAG, VECTOR_STORE_DIR
+from src.config import CHROMA_COLLECTION_NAME, DEFAULT_TOP_K_RAG, VECTOR_STORE_DIR
+
+from .schemas import RagProduct
 
 # ------------------------------------------------------------------------------
 # Connect to Chroma persistent DB

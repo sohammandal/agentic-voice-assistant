@@ -22,13 +22,14 @@ import subprocess
 from typing import Any, Dict, List
 
 from langgraph.graph import END, START, StateGraph
-from schemas import LGState, RagProduct, WebProduct
 
-from config import (
+from src.config import (
     DEFAULT_MAX_WEB_RESULTS,
     DEFAULT_TOP_K_RAG,
 )
-from llm.groq_llm import llm_chat
+from src.llm.groq_llm import llm_chat
+
+from ..mcp.schemas import LGState, RagProduct, WebProduct
 
 # =====================================================================
 # MCP TOOL WRAPPER (PERSISTENT SUBPROCESS)

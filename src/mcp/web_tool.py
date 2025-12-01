@@ -25,14 +25,15 @@ from functools import lru_cache
 from typing import Dict, List, Optional
 
 import requests
-from schemas import WebProduct
 
-from config import (
+from src.config import (
     DEFAULT_MAX_WEB_RESULTS,
     SERPER_API_KEY,
     WEB_SEARCH_MIN_INTERVAL,
     WEB_SEARCH_TTL_SECONDS,
 )
+
+from .schemas import WebProduct
 
 # --------------------------------------------------------------------------
 # Safety checks

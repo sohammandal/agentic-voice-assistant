@@ -10,7 +10,20 @@ This file manages:
 - Sending final responses to TTS/UI layer (placeholders included)
 """
 
-from orchestration.graph import initialize_state, run_graph
+# Load environment variables from a local .env file if python-dotenv is available.
+# This ensures keys like GROQ_API_KEY are present in os.environ before modules
+# (which read from os.environ at import time) are imported.
+try:
+    from dotenv import find_dotenv, load_dotenv
+
+    # find_dotenv() returns the path to a .env file in the repo if present
+    load_dotenv(find_dotenv() or ".env")
+except Exception:
+    # If python-dotenv is not installed, nothing to do here — instruct user to
+    # set env vars in their shell instead.
+    pass
+
+from src.orchestration.graph import initialize_state, run_graph
 
 
 # -------------------------------------------------------------------------

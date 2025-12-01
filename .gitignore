@@ -207,3 +207,6 @@ data/*
 # Vector store 
 vector_store_*/
 src/rag/vector_store/
+
+.DS_Store
+.Rhistory
