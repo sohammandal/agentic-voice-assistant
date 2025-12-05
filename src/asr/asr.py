@@ -15,7 +15,7 @@ class ASRProcessor:
         """Initialize ASR with Whisper model."""
         print(f"Loading Whisper model: {model_name}...")
         self.asr_model = whisper.load_model(model_name)
-        print("✓ ASR ready!")
+        print("ASR ready")
     
     def encode_audio(self, audio_path: str) -> dict:
         """
@@ -38,4 +38,4 @@ class ASRProcessor:
 
 if __name__ == "__main__":
     asr = ASRProcessor()
-    print("ASR module ready!")
+    print("ASR ready")
