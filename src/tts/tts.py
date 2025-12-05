@@ -30,7 +30,7 @@ class TTSProcessor:
         # Create default speaker embeddings (standard voice)
         self.speaker_embeddings = torch.randn(1, 512).to(self.device)
         
-        print("TTS ready!")
+        print("TTS ready")
     
     def decode_audio(self, answer: str) -> torch.Tensor:
         """Decode text to audio waveform."""
@@ -54,4 +54,4 @@ class TTSProcessor:
 
 if __name__ == "__main__":
     tts = TTSProcessor()
-    print("TTS module ready!")
+    print("TTS module ready")
