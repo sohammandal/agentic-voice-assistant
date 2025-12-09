@@ -134,6 +134,7 @@ def rag_search(
 
     ids = results.get("ids", [[]])[0]
     metas = results.get("metadatas", [[]])[0]
+    docs = results.get("documents", [[]])[0]
 
     products: List[RagProduct] = []
 
