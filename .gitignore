@@ -143,6 +143,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+README_windows.md
 
 # Spyder project settings
 .spyderproject
@@ -210,3 +211,6 @@ src/rag/vector_store/
 
 .DS_Store
 .Rhistory
+
+# VSCode
+.vscode/*
