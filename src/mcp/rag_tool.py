@@ -43,6 +43,7 @@ from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb.config import Settings
+from sentence_transformers import SentenceTransformer
 
 from src.config import CHROMA_COLLECTION_NAME, DEFAULT_TOP_K_RAG, VECTOR_STORE_DIR
 
@@ -64,11 +65,16 @@ _client = chromadb.PersistentClient(
 # Load collection by name (you confirmed this)
 _collection = _client.get_collection(CHROMA_COLLECTION_NAME)
 
-
+EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+_EMBED_MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
 # ------------------------------------------------------------------------------
 # Metadata → RagProduct mapper
 # ------------------------------------------------------------------------------
-def _metadata_to_rag_product(meta: Dict[str, Any], doc_id: str) -> RagProduct:
+def _metadata_to_rag_product(
+    meta: Dict[str, Any],
+    doc_id: str,
+    document_text: Optional[str] = None,
+) -> RagProduct:
     """
     Convert your actual metadata dictionary from Chroma into RagProduct format.
     """
@@ -107,7 +113,7 @@ def _metadata_to_rag_product(meta: Dict[str, Any], doc_id: str) -> RagProduct:
     brand = meta.get("brand")
 
     return RagProduct(
-        sku=str(product_id),
+        sku=str(product_id) if product_id is not None else str(doc_id),
         title=str(product_name),
         price=float(price) if price is not None else None,
         rating=None,  # Always None
@@ -143,13 +149,16 @@ def rag_search(
     """
 
     where = filters or None
+    query_vec = _EMBED_MODEL.encode(query).tolist()
 
     results = _collection.query(
-        query_texts=[query],
+        query_embeddings=[query_vec],
         n_results=top_k,
         where=where,
-        include=["metadatas", "ids", "documents"],
+        # IMPORTANT: do NOT include "ids" here – Chroma will still return them
+        include=["metadatas", "documents"],
     )
+
 
     ids = results.get("ids", [[]])[0]
     metas = results.get("metadatas", [[]])[0]
