@@ -1,5 +1,5 @@
 """
-app.py - Streamlit app for Agentic Voice Assistant
+app.py - streamlit app for Agentic Voice Assistant
 """
 
 # Load environment variables
@@ -17,8 +17,6 @@ from src.orchestration.graph import initialize_state, run_graph
 from src.asr.asr import ASRProcessor
 from src.tts.tts import TTSProcessor
 import soundfile as sf
-
-
 
 # Configure the page
 st.set_page_config(
@@ -191,15 +189,32 @@ def get_remaining_content(text):
 # ---- Page Layout Configuration ----
 
 # Create buttons
-# Need to use custom CSS/HTML for button colors
+# Custom CSS for button colors
 st.markdown("""
 <style>
-    button[kind="primary"] { background-color: #0068C9 !important; border-color: #0068C9 !important; }
-    button[kind="primary"]:hover { background-color: #0054A3 !important; border-color: #0054A3 !important; }
-    button[kind="secondary"] { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: white !important; }
-    button[kind="secondary"]:hover { background-color: #CC0000 !important; border-color: #CC0000 !important; color: white !important; }
+    /* Primary (selected) button - blue */
+    button[kind="primary"] { 
+        background-color: #0068C9 !important; 
+        border-color: #0068C9 !important; 
+        color: white !important;
+    }
+    button[kind="primary"]:hover { 
+        background-color: #0054A3 !important; 
+        border-color: #0054A3 !important; 
+    }
+    
+    /* Secondary (unselected) button - sidebar gray */
+    button[kind="secondary"] { 
+        background-color: #f0f2f6 !important; 
+        border-color: #d3d3d3 !important; 
+        color: #262730 !important; 
+    }
+    button[kind="secondary"]:hover { 
+        background-color: #e0e2e6 !important; 
+        border-color: #b8bac0 !important; 
+    }
 </style>
-""", unsafe_allow_html= True)
+""", unsafe_allow_html=True)
 
 # Add title and sidebar
 st.title("Agentic Voice Assistant")
