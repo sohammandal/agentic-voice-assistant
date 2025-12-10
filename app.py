@@ -1,11 +1,7 @@
 """
-app.py - Step 8: Final Fixes (Memory Management)
-
-- Uses io.BytesIO for TTS to prevent disk fill-up
-- Robust cleanup for ASR temp files
-- Fixes formatting issues (No extra asterisks)
-- Restores .m4a support for audio uploads
+app.py - Streamlit app for Agentic Voice Assistant
 """
+
 # Load environment variables
 from dotenv import find_dotenv, load_dotenv
 load_dotenv(find_dotenv() or ".env")
@@ -51,6 +47,9 @@ if "audio_widget_key" not in st.session_state:
 if "last_query" not in st.session_state:
     st.session_state.last_query = None
 
+if "voice_gender" not in st.session_state:
+    st.session_state.voice_gender = "male"  # Default voice
+
 # ---- ASR and TTS Model Initialization ----
 
 if "asr_processor" not in st.session_state:
@@ -59,7 +58,7 @@ if "asr_processor" not in st.session_state:
 
 if "tts_processor" not in st.session_state:
     with st.spinner("Loading TTS model..."):
-        st.session_state.tts_processor = TTSProcessor()
+        st.session_state.tts_processor = TTSProcessor(gender=st.session_state.voice_gender)
 
 # ---- Helper Function Library ----
 def preprocess_text_for_tts(text):
@@ -207,6 +206,34 @@ st.title("Agentic Voice Assistant")
 st.subheader("Voice-to-Voice AI for Product Discovery")
 
 with st.sidebar:
+    st.header("Voice Settings")
+    st.write("**Select Voice Gender:**")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🎙️ Male", use_container_width=True, 
+                    type="primary" if st.session_state.voice_gender == "male" else "secondary"):
+            if st.session_state.voice_gender != "male":
+                st.session_state.voice_gender = "male"
+                if "tts_processor" in st.session_state:
+                    st.session_state.tts_processor.change_voice("male")
+                st.success("Voice changed to Male")
+                st.rerun()
+    
+    with col2:
+        if st.button("🎙️ Female", use_container_width=True,
+                    type="primary" if st.session_state.voice_gender == "female" else "secondary"):
+            if st.session_state.voice_gender != "female":
+                st.session_state.voice_gender = "female"
+                if "tts_processor" in st.session_state:
+                    st.session_state.tts_processor.change_voice("female")
+                st.success("Voice changed to Female")
+                st.rerun()
+    
+    st.caption(f"Current: {st.session_state.voice_gender.title()} voice")
+    
+    st.divider()
     st.header("Input Options")
     input_method = st.radio("Choose input method:", ["Record Audio", "Type Text", "Upload Audio"], key="input_method")
     st.divider()
@@ -220,6 +247,7 @@ with st.sidebar:
         st.session_state.transcribed_text = None
         st.session_state.audio_widget_key += 1
         st.session_state.last_query = None
+        st.session_state.voice_gender = "male"  # Reset to default
         
         # Clear models to force reload
         if "asr_processor" in st.session_state: del st.session_state.asr_processor
