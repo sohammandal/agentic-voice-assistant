@@ -88,11 +88,6 @@ def _metadata_to_rag_product(meta: Dict[str, Any], doc_id: str) -> RagProduct:
     # shipping_weight_lbs = meta.get("shipping_weight_lbs")
     # model_number = meta.get("model_number")
 
-    product_id = meta.get("product_id")
-    product_name = meta.get("product_name")
-    price = meta.get("price")
-    brand = meta.get("brand")
-
     # return RagProduct(
     #     sku=str(product_id),
     #     title=str(product_name),
@@ -105,6 +100,12 @@ def _metadata_to_rag_product(meta: Dict[str, Any], doc_id: str) -> RagProduct:
     #     model_number=model_number,
     #     raw_metadata=meta,
     # )
+
+    product_id = meta.get("product_id")
+    product_name = meta.get("product_name")
+    price = meta.get("price")
+    brand = meta.get("brand")
+
     return RagProduct(
         sku=str(product_id),
         title=str(product_name),
