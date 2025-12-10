@@ -1,10 +1,9 @@
 """
-app.py - streamlit app for Agentic Voice Assistant
+Streamlit app for Agentic Voice Assistant
 """
 
 # Load environment variables
 from dotenv import find_dotenv, load_dotenv
-
 load_dotenv(find_dotenv() or ".env")
 
 # Import necessary libraries
@@ -21,15 +20,15 @@ from src.asr.asr import ASRProcessor
 from src.orchestration.graph import initialize_state, run_graph
 from src.tts.tts import TTSProcessor
 
-# Configure the page
+# --- Main Page Configuration ----
 st.set_page_config(
     page_title="Agentic Voice Assistant",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ---- Session State Configuration ----
 
+# ---- Session State Configuration ----
 if "conversation_state" not in st.session_state:
     st.session_state.conversation_state = initialize_state()
 
@@ -52,7 +51,6 @@ if "voice_gender" not in st.session_state:
     st.session_state.voice_gender = "male"  # Default voice
 
 # ---- ASR and TTS Model Initialization ----
-
 if "asr_processor" not in st.session_state:
     with st.spinner("Loading ASR model..."):
         st.session_state.asr_processor = ASRProcessor(model_name="small")
@@ -66,7 +64,7 @@ if "tts_processor" not in st.session_state:
 
 # ---- Helper Function Library ----
 def preprocess_text_for_tts(text):
-    """Convert numbers to words for TTS and remove markdown asterisks."""
+    """Convert numbers to words for TTS and remove markdown asterisks. """
     text = text.replace("*", "")
 
     def replace_dollar(match):
@@ -83,7 +81,7 @@ def preprocess_text_for_tts(text):
 
 
 def fix_section_headers(text: str) -> str:
-    """Clean up headers and rebuild item lines to ensure clean formatting."""
+    """Clean up headers and rebuild item lines to ensure clean formatting. """
     # Clean Headers
     text = re.sub(
         r"(?m)^.*Catalog Items \(Private Amazon-2020 Dataset\).*?:\s*(.*)",
@@ -143,7 +141,7 @@ def fix_section_headers(text: str) -> str:
 
 
 def process_audio_file(audio_file):
-    """Process audio with robust temp file cleanup."""
+    """Process audio with robust temp file cleanup. """
     tmp_path = None
     try:
         # Save upload to temp file for ASR
@@ -167,7 +165,7 @@ def process_audio_file(audio_file):
 
 
 def generate_tts_audio(text):
-    """Generate TTS audio via TTSProcessor from custom TTS module."""
+    """Generate TTS audio via TTSProcessor from custom TTS module. """
     try:
         processed_text = preprocess_text_for_tts(text)
         waveform = st.session_state.tts_processor.decode_audio(processed_text)
@@ -185,21 +183,20 @@ def generate_tts_audio(text):
 
 
 def extract_first_paragraph(text):
-    """Get the first paragraph from the response text."""
+    """Get the first paragraph from the response text. """
     parts = text.split("\n\n", 1)
     return parts[0] if parts else text
 
 
 def get_remaining_content(text):
-    """Get remaining content after the first paragraph, fixing headers."""
+    """Get remaining content after the first paragraph, fixing headers. """
     parts = text.split("\n\n", 1)
     if len(parts) > 1:
         return fix_section_headers(parts[1])
     return ""
 
 
-# ---- Page Layout Configuration ----
-
+# ---- Page Layout Logic ----
 # Create buttons
 # Custom CSS for button colors
 st.markdown(
@@ -306,8 +303,8 @@ user_query = None
 if st.session_state.last_response and st.session_state.last_query:
     st.info(f"**Your Question:** {st.session_state.last_query}")
 
-# ---- Input Logic ----
 
+# ---- Input Logic ----
 if input_method == "Type Text":
     user_query = st.text_input("Enter your question:", key="text_input")
     if user_query:
@@ -348,8 +345,8 @@ elif input_method in ["Record Audio", "Upload Audio"]:
         st.success(f"Transcribed: {st.session_state.transcribed_text}")
         user_query = st.session_state.transcribed_text
 
-# ---- Query Processing Logic ----
 
+# ---- Query Processing Logic ----
 if user_query:
     if st.button("Process Query", type="primary", use_container_width=True):
         with st.spinner("Processing query..."):
@@ -379,8 +376,8 @@ if user_query:
             except Exception as e:
                 st.error(f"Error: {e}")
 
-# ---- Answering Logic ----
 
+# ---- Answering Logic ----
 if st.session_state.last_response:
     st.divider()
     st.header("Assistant Response")
