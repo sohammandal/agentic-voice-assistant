@@ -18,9 +18,9 @@ This file defines:
 """
 
 import json
+import re
 import subprocess
 from typing import Any, Dict, List
-import re
 
 from langgraph.graph import END, START, StateGraph
 
@@ -700,7 +700,6 @@ def response_synthesizer(state: LGState) -> LGState:
 
     state["response_text"] = "\n".join(lines).strip()
     return state
-
 
 
 # =====================================================================
