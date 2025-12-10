@@ -1,13 +1,5 @@
 """
-app.py - Step 8: Final Fixes (Memory Management)
-
-<<<<<<< Updated upstream
-st.title("App.py is running!")
-=======
-- Uses io.BytesIO for TTS to prevent disk fill-up
-- Robust cleanup for ASR temp files
-- Fixes formatting issues (No extra asterisks)
-- Restores .m4a support for audio uploads
+app.py - Streamlit app for Agentic Voice Assistant
 """
 
 # Import necessary libraries
@@ -320,4 +312,3 @@ if st.session_state.last_response:
             st.markdown(f"**{i}.** {step}")
 
 st.divider()
->>>>>>> Stashed changes
