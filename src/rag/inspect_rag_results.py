@@ -29,7 +29,14 @@ if __name__ == "__main__":
         print("\n==============================")
         print("QUERY:", q)
         print("==============================")
-        results = rag_search(q, top_k=3)
+        filters = {
+            "$and": [
+                {"main_category": {"$eq": "home & kitchen"}},
+                {"price": {"$lte": 25.0}},
+            ]
+        }
+
+        results = rag_search(q, top_k=10, filters=filters)
         if not results:
             print("No results.")
             continue

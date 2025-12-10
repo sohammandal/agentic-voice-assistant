@@ -120,6 +120,7 @@ def initialize_state() -> LGState:
         last_web_results
         response_text
         step_log
+        plan
     """
     return {
         "user_utterance": None,
@@ -130,6 +131,7 @@ def initialize_state() -> LGState:
         "last_web_results": [],
         "response_text": None,
         "step_log": [],
+        "plan": {},
     }
 
 
@@ -269,7 +271,7 @@ def router_decision(state: LGState) -> str:
     Determines the next node in the graph based on state["intent"].
 
     Return values MUST be node names:
-        - "product_discovery_agent"
+        - "planner_agent"
         - "comparison_agent"
         - "clarification_agent"
 
@@ -286,13 +288,121 @@ def router_decision(state: LGState) -> str:
         if rag_ok or web_ok:
             return "comparison_agent"
         else:
-            # No results yet → forced product discovery
-            return "product_discovery_agent"
+            # No results yet -> plan and then discover
+            return "planner_agent"
 
     if intent == "clarification":
         return "clarification_agent"
 
-    # Default
+    # Default: plan first
+    return "planner_agent"
+
+
+def planner_agent(state: LGState) -> LGState:
+    """
+    Planner Agent.
+
+    Decides:
+      - whether to use rag.search and/or web.search
+      - basic metadata filters for RAG (e.g. category, budget)
+
+    Writes its plan into state["plan"] as a dict like:
+      {
+        "use_rag": true,
+        "use_web": true,
+        "rag_top_k": 10,
+        "web_max_results": 5,
+        "rag_filters": {"category": "curtain"}
+      }
+    """
+
+    user_text = state.get("user_utterance", "") or ""
+    prefs = state.get("user_preferences", {}) or {}
+
+    system_prompt = (
+        "You are the Planner agent in a shopping assistant.\n"
+        "Given the user's request and known preferences, decide which sources to use:\n"
+        "- Private catalog via rag.search\n"
+        "- Live web via web.search\n"
+        "Also infer a high-level product category and any useful filters.\n\n"
+        "Return STRICT JSON ONLY in this format:\n"
+        "{\n"
+        '  "use_rag": true,\n'
+        '  "use_web": true,\n'
+        '  "rag_top_k": 10,\n'
+        '  "web_max_results": 5,\n'
+        '  "rag_filters": {\n'
+        '      "category": "curtain"\n'
+        "  }\n"
+        "}\n"
+        "If you are unsure about filters, set rag_filters to an empty object {}.\n"
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": (
+                f"User request: {user_text}\nKnown preferences: {json.dumps(prefs)}"
+            ),
+        },
+    ]
+
+    plan: Dict[str, Any] = {
+        "use_rag": True,
+        "use_web": True,
+        "rag_top_k": DEFAULT_TOP_K_RAG,
+        "web_max_results": DEFAULT_MAX_WEB_RESULTS,
+        "rag_filters": {},
+    }
+
+    try:
+        llm_out = llm_chat(messages, max_tokens=256)
+        parsed = json.loads(llm_out)
+        if isinstance(parsed, dict):
+            plan.update(parsed)
+    except Exception:
+        # keep default plan
+        pass
+
+    # --- normalize rag_filters ---
+    prefs = state.get("user_preferences", {}) or {}
+    budget = prefs.get("budget")
+
+    clauses = []
+
+    # 1) Constrain to the catalog slice we care about
+    clauses.append({"main_category": {"$eq": "home & kitchen"}})
+
+    # 2) Apply budget if we have one
+    if isinstance(budget, (int, float)):
+        clauses.append({"price": {"$lte": float(budget)}})
+
+    # 3) Emit Chroma-compatible filters
+    if clauses:
+        plan["rag_filters"] = {"$and": clauses}
+    else:
+        plan["rag_filters"] = {}
+    # --- end normalize ---
+
+    state["plan"] = plan
+
+    log = state.get("step_log", [])
+    log.append(
+        f"Planner decided use_rag={plan.get('use_rag')} "
+        f"use_web={plan.get('use_web')} "
+        f"rag_filters={plan.get('rag_filters')}"
+    )
+    state["step_log"] = log
+
+    return state
+
+
+def planner_decision(_state: LGState) -> str:
+    """
+    Planner always routes to Product Discovery for now.
+    Later you could add branches (e.g. web_only).
+    """
     return "product_discovery_agent"
 
 
@@ -350,7 +460,15 @@ def product_discovery_agent(state: LGState) -> LGState:
 
     llm_out = llm_chat(messages)
 
-    # 2) Parse JSON → tool_calls, else fallback to deterministic calls
+    # 2) Read Planner plan
+    plan = state.get("plan", {}) or {}
+    use_rag = plan.get("use_rag", True)
+    use_web = plan.get("use_web", True)
+    rag_top_k = plan.get("rag_top_k", DEFAULT_TOP_K_RAG)
+    web_max_results = plan.get("web_max_results", DEFAULT_MAX_WEB_RESULTS)
+    rag_filters = plan.get("rag_filters", {}) or {}
+
+    # 3) Parse JSON -> tool_calls
     tool_calls: List[Dict[str, Any]] = []
     try:
         parsed = json.loads(llm_out)
@@ -358,18 +476,45 @@ def product_discovery_agent(state: LGState) -> LGState:
     except Exception:
         tool_calls = []
 
+    # 3a) If LLM gave us something, normalize it to respect the plan
+    normalized: List[Dict[str, Any]] = []
+    for call in tool_calls:
+        name = call.get("tool_name")
+        payload = call.get("payload", {}) or {}
+
+        if name == "rag.search":
+            if not use_rag:
+                continue
+            payload.setdefault("query", query)
+            payload["top_k"] = rag_top_k
+            if rag_filters:
+                payload["filters"] = rag_filters
+            normalized.append({"tool_name": "rag.search", "payload": payload})
+
+        elif name == "web.search":
+            if not use_web:
+                continue
+            payload.setdefault("query", query)
+            payload["max_results"] = web_max_results
+            normalized.append({"tool_name": "web.search", "payload": payload})
+
+    tool_calls = normalized
+
+    # 3b) If LLM JSON failed or got filtered out, fall back to deterministic plan-based calls
     if not tool_calls:
-        # Fallback: deterministic calls
-        tool_calls = [
-            {
-                "tool_name": "rag.search",
-                "payload": {"query": query, "top_k": DEFAULT_TOP_K_RAG},
-            },
-            {
-                "tool_name": "web.search",
-                "payload": {"query": query, "max_results": DEFAULT_MAX_WEB_RESULTS},
-            },
-        ]
+        tool_calls = []
+        if use_rag:
+            payload = {"query": query, "top_k": rag_top_k}
+            if rag_filters:
+                payload["filters"] = rag_filters
+            tool_calls.append({"tool_name": "rag.search", "payload": payload})
+        if use_web:
+            tool_calls.append(
+                {
+                    "tool_name": "web.search",
+                    "payload": {"query": query, "max_results": web_max_results},
+                }
+            )
 
     # 3) Execute MCP tools
     rag_results_raw = []
@@ -752,6 +897,7 @@ router_agent
 graph = StateGraph(LGState)
 
 graph.add_node("router_agent", router_agent)
+graph.add_node("planner_agent", planner_agent)
 graph.add_node("product_discovery_agent", product_discovery_agent)
 graph.add_node("comparison_agent", comparison_agent)
 graph.add_node("clarification_agent", clarification_agent)
@@ -760,14 +906,23 @@ graph.add_node("response_synthesizer", response_synthesizer)
 # START → Router
 graph.add_edge(START, "router_agent")
 
-# Router → next node (keys MUST match router_decision return values)
+# Router -> next node
 graph.add_conditional_edges(
     "router_agent",
     router_decision,
     {
-        "product_discovery_agent": "product_discovery_agent",
+        "planner_agent": "planner_agent",
         "comparison_agent": "comparison_agent",
         "clarification_agent": "clarification_agent",
+    },
+)
+
+# Planner -> Product Discovery
+graph.add_conditional_edges(
+    "planner_agent",
+    planner_decision,
+    {
+        "product_discovery_agent": "product_discovery_agent",
     },
 )
 

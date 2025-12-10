@@ -81,9 +81,11 @@ agentic-voice-assistant/
 
 6. **Run the app**
 
-   From the project root:
+   From the project root, run these two commands:
 
       ```bash
+      python -m src.rag.run_service start
+
       make run
       ```
 

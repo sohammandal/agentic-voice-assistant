@@ -188,16 +188,12 @@ class EmbeddingServiceManager:
                 cmd,
                 cwd=workspace_root,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
             )
         else:
             self._process = subprocess.Popen(
                 cmd,
                 cwd=workspace_root,
                 start_new_session=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
             )
 
         # Save PID and port

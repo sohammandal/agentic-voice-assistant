@@ -71,6 +71,11 @@ RAG_SEARCH_SCHEMA = {
         "properties": {
             "query": {"type": "string"},
             "top_k": {"type": "integer"},
+            "filters": {
+                "type": "object",
+                "description": "Optional metadata filters for the vector DB",
+                "additionalProperties": True,
+            },
         },
         "required": ["query"],
     },
@@ -79,6 +84,7 @@ RAG_SEARCH_SCHEMA = {
         "properties": {"results": {"type": "array", "items": {"type": "object"}}},
     },
 }
+
 
 WEB_SEARCH_SCHEMA = {
     "name": "web.search",
@@ -113,9 +119,10 @@ def _log(event: str, payload: Dict[str, Any]):
 def _call_rag_search(payload: Dict[str, Any]) -> Dict[str, Any]:
     query = payload["query"]
     top_k = payload.get("top_k", 10)
+    filters = payload.get("filters")  # may be None
 
     _log("rag.search_request", payload)
-    results = rag_search(query=query, top_k=top_k)
+    results = rag_search(query=query, top_k=top_k, filters=filters)
 
     out = []
     for r in results:

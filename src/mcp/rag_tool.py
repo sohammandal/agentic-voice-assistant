@@ -1,173 +1,76 @@
-# RAG: rag.search over your Chroma vector store (rag_tool.py)
+# src/mcp/rag_tool.py
 
-# This assumes:
-# You already built a persistent Chroma store under vector_store/
-
-# Each record has:
-# id: chunk id (e.g. text_<product_id>_1)
-# document: your embedding_text
-# metadata: JSON that includes things like product_id, product_name, selling_price, brand_name, etc.
-
-# Purpose: encapsulates everything about private catalog retrieval so:
-# MCP → rag_search()
-# LangGraph agents → only see clean RagProduct objects
-
-# Your RAG Tool, fully mapped to your real Chroma metadata schema.
-# This file:
-# Loads  existing Chroma persistent store
-# Connects to collection: agentic_voice_assistant_vdb
-# Handles similarity search
-# Converts  real metadata to the rag.search output schema approved
-
-# Router Agent → Product Discovery Agent
-# The Product Discovery Agent receives this structured list:
-# state.last_rag_results = [RagProduct(...)]
-# Then the agent:
-# Displays catalog price (12.99)
-# Displays brand, title
-# Shows a product card
-# And also performs web.search separately
-# This follows your "NO FUSION" rule.
-
-# rag_tool.py
 """
 rag_tool.py
 
-Implements rag.search on top of your persistent Chroma vector store:
-- Loads existing collection: agentic_voice_assistant_vdb
-- Performs similarity search
-- Maps metadata into structured RagProduct objects
+Implements rag.search on top of your persistent Chroma vector store, via
+VectorStoreService:
+
+- Loads existing collection (CHROMA_COLLECTION_NAME)
+- Performs semantic search with optional metadata filters
+- Maps Chroma metadata into structured RagProduct objects
 """
 
 from typing import Any, Dict, List, Optional
 
-import chromadb
-from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
+from src.mcp.schemas import RagProduct
+from src.rag.vector_store_service import VectorStoreService
 
-from src.config import CHROMA_COLLECTION_NAME, DEFAULT_TOP_K_RAG, VECTOR_STORE_DIR
-
-from .schemas import RagProduct
-
-# ------------------------------------------------------------------------------
-# Connect to Chroma persistent DB
-# ------------------------------------------------------------------------------
-# Your folder structure:
-# vector_store/
-#   aa7e9642-b045-47d3-8062-92bd59a7d5da/
-#       chroma.sqlite3, *.bin files
-
-_client = chromadb.PersistentClient(
-    path=str(VECTOR_STORE_DIR),
-    settings=Settings(anonymized_telemetry=False),
-)
-
-# Load collection by name (you confirmed this)
-_collection = _client.get_collection(CHROMA_COLLECTION_NAME)
-
-EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
-_EMBED_MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
+_vector_store: Optional[VectorStoreService] = None
 
 
-# ------------------------------------------------------------------------------
-# Metadata → RagProduct mapper
-# ------------------------------------------------------------------------------
-def _metadata_to_rag_product(
-    meta: Dict[str, Any],
-    doc_id: str,
-    document_text: Optional[str] = None,
-) -> RagProduct:
-    """
-    Convert your actual metadata dictionary from Chroma into RagProduct format.
-    """
-
-    # # --- Required fields from your dataset ---
-    # product_id = meta.get("product_id")
-    # product_name = meta.get("product_name")
-    # price = meta.get("price")
-
-    # # Some items have rating, some don't
-    # rating = meta.get("rating")  # may be None
-
-    # brand = meta.get("brand")
-    # ingredients = meta.get("ingredients")
-
-    # # Extra fields you asked for
-    # shipping_weight_lbs = meta.get("shipping_weight_lbs")
-    # model_number = meta.get("model_number")
-
-    # return RagProduct(
-    #     sku=str(product_id),
-    #     title=str(product_name),
-    #     price=float(price) if price is not None else None,
-    #     rating=rating,
-    #     brand=brand,
-    #     ingredients=ingredients,
-    #     doc_id=str(doc_id),
-    #     shipping_weight_lbs=shipping_weight_lbs,
-    #     model_number=model_number,
-    #     raw_metadata=meta,
-    # )
-
-    product_id = meta.get("product_id")
-    product_name = meta.get("product_name")
-    price = meta.get("price")
-    brand = meta.get("brand")
-
-    return RagProduct(
-        sku=str(product_id) if product_id is not None else str(doc_id),
-        title=str(product_name),
-        price=float(price) if price is not None else None,
-        rating=None,  # Always None
-        brand=brand,
-        ingredients=None,  # Always None
-        doc_id=str(doc_id),
-        shipping_weight_lbs=None,  # Not storing this
-        model_number=None,  # Not storing this
-        raw_metadata=meta,
-        document_text=document_text,  # ← ADD THIS
-    )
+def _get_vector_store() -> VectorStoreService:
+    """Lazy-init a single VectorStoreService instance."""
+    global _vector_store
+    if _vector_store is None:
+        _vector_store = VectorStoreService()
+    return _vector_store
 
 
-# ------------------------------------------------------------------------------
-# Main rag.search function
-# ------------------------------------------------------------------------------
 def rag_search(
     query: str,
-    top_k: int = DEFAULT_TOP_K_RAG,
+    top_k: int = 10,
     filters: Optional[Dict[str, Any]] = None,
 ) -> List[RagProduct]:
     """
-    Perform semantic search over your Chroma vector DB.
-    This is the core of MCP tool `rag.search`.
+    RAG search over the prebuilt Chroma vector store.
 
     Args:
-        query: natural language search query
-        top_k: number of results
-        filters: optional metadata filters (dict)
+        query: User query text.
+        top_k: Number of results to return.
+        filters: Optional metadata filters, passed as `where` to VectorStoreService.search.
 
     Returns:
-        List[RagProduct]
+        List[RagProduct] for LangGraph / MCP.
     """
+    vs = _get_vector_store()
 
-    where = filters or None
-    query_vec = _EMBED_MODEL.encode(query).tolist()
-
-    results = _collection.query(
-        query_embeddings=[query_vec],
-        n_results=top_k,
-        where=where,
-        # IMPORTANT: do NOT include "ids" here – Chroma will still return them
-        include=["metadatas", "documents"],
+    results = vs.search(
+        query=query,
+        top_k=top_k,
+        where=filters,
     )
 
-    ids = results.get("ids", [[]])[0]
-    metas = results.get("metadatas", [[]])[0]
-    docs = results.get("documents", [[]])[0]
+    rag_products: List[RagProduct] = []
+    ids = results.get("ids", [])
+    docs = results.get("documents", [])
+    metas = results.get("metadatas", [])
+    dists = results.get("distances", [])
 
-    products: List[RagProduct] = []
+    for doc_id, doc_text, meta, dist in zip(ids, docs, metas, dists):
+        rag_products.append(
+            RagProduct(
+                sku=str(meta.get("product_id", doc_id)),
+                title=str(meta.get("product_name", "Unknown product")),
+                price=meta.get("price"),
+                rating=None,  # your slice has no rating column
+                brand=meta.get("brand"),
+                ingredients=None,
+                doc_id=str(doc_id),
+                shipping_weight_lbs=meta.get("shipping_weight_lbs"),
+                model_number=meta.get("model_number"),
+                raw_metadata=meta,
+            )
+        )
 
-    for doc_id, meta, document_text in zip(ids, metas, docs):
-        products.append(_metadata_to_rag_product(meta, doc_id, document_text))
-
-    return products
+    return rag_products

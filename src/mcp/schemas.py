@@ -126,3 +126,4 @@ class LGState(TypedDict, total=False):
 
     response_text: str
     step_log: List[str]
+    plan: Dict[str, Any]
