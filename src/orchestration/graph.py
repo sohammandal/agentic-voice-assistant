@@ -765,6 +765,32 @@ def response_synthesizer(state: LGState) -> LGState:
     web_items = state.get("last_web_results", [])
     base_text = state.get("response_text", "")
 
+    # Simple relevance filter for catalog items based on query text
+    query_text = (state.get("last_query") or "").lower()
+
+    if query_text and rag_items:
+        filtered_rag: List[RagProduct] = []
+        # Focus on meaningful tokens (length > 3)
+        tokens = [t for t in query_text.split() if len(t) > 3]
+
+        for p in rag_items:
+            # Combine title, brand, and a bit of metadata into a single text blob
+            meta = getattr(p, "raw_metadata", {}) or {}
+            haystack = f"{p.title} {p.brand} {meta.get('features', '')}".lower()
+
+            # Count how many query tokens appear in this product
+            matches = sum(1 for tok in tokens if tok in haystack)
+
+            # Keep products that match at least 2 tokens, or 1 if query is very short
+            if (len(tokens) >= 2 and matches >= 2) or (
+                len(tokens) == 1 and matches >= 1
+            ):
+                filtered_rag.append(p)
+
+        # Only replace if we actually found something
+        if filtered_rag:
+            rag_items = filtered_rag
+
     # Clarification turns: just return the clarification text
     if state.get("intent") == "clarification":
         if not base_text:
@@ -790,25 +816,38 @@ def response_synthesizer(state: LGState) -> LGState:
     summary_payload = {
         "original_query": state.get("last_query"),
         "budget": budget,
-        "catalog_items": [
+        "catalog_items": [],
+        "web_items": [],
+    }
+
+    # Populate catalog items with richer metadata
+    for p in rag_items[:3]:
+        meta = getattr(p, "raw_metadata", {}) or {}
+        summary_payload["catalog_items"].append(
             {
                 "title": p.title,
                 "price": p.price,
                 "brand": p.brand,
                 "rating": p.rating,
+                # NEW: richer info
+                "model_number": p.model_number,
+                "shipping_weight_lbs": p.shipping_weight_lbs,
+                "features": meta.get("features"),
+                "category_path": meta.get("category_path"),
+                "main_category": meta.get("main_category"),
             }
-            for p in rag_items[:3]
-        ],
-        "web_items": [
+        )
+
+    # Populate web items the same as before
+    for w in web_items[:3]:
+        summary_payload["web_items"].append(
             {
                 "title": w.title,
                 "price": w.price,
                 "availability": w.availability,
                 "source": w.source,
             }
-            for w in web_items[:3]
-        ],
-    }
+        )
 
     # Call Groq to write a short spoken recommendation
     answer_text = ""
