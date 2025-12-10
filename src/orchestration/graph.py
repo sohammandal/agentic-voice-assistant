@@ -20,6 +20,7 @@ This file defines:
 import json
 import subprocess
 from typing import Any, Dict, List
+import re
 
 from langgraph.graph import END, START, StateGraph
 
@@ -240,6 +241,16 @@ def router_agent(state: LGState) -> LGState:
     # If user clearly wants comparison, force compare
     if any(p in u for p in ["compare", " vs ", " versus "]):
         intent = "compare"
+
+    # Extract numeric budget like "under 15 dollars", "under $15"
+    prefs = state.get("user_preferences", {}) or {}
+    m = re.search(r"under\s+\$?(\d+(?:\.\d+)?)", u)
+    if m:
+        try:
+            prefs["budget"] = float(m.group(1))
+        except ValueError:
+            pass
+    state["user_preferences"] = prefs
 
     state["intent"] = intent
     state["last_query"] = user_text
@@ -585,17 +596,82 @@ def response_synthesizer(state: LGState) -> LGState:
     web_items = state.get("last_web_results", [])
     base_text = state.get("response_text", "")
 
+    # Clarification turns: just return the clarification text
     if state.get("intent") == "clarification":
         if not base_text:
             base_text = "I’ve updated your preferences."
         state["response_text"] = base_text
         return state
 
+    # Budget-aware filtering for web results
+    prefs = state.get("user_preferences", {}) or {}
+    budget = prefs.get("budget")
+
+    if budget is not None:
+        filtered_web: List[WebProduct] = []
+        for item in web_items:
+            # Strict: skip unknown prices when user gave a budget
+            if item.price is None:
+                continue
+            if item.price <= budget:
+                filtered_web.append(item)
+        web_items = filtered_web
+
+    # Build compact JSON summary for the Answerer LLM
+    summary_payload = {
+        "original_query": state.get("last_query"),
+        "budget": budget,
+        "catalog_items": [
+            {
+                "title": p.title,
+                "price": p.price,
+                "brand": p.brand,
+                "rating": p.rating,
+            }
+            for p in rag_items[:3]
+        ],
+        "web_items": [
+            {
+                "title": w.title,
+                "price": w.price,
+                "availability": w.availability,
+                "source": w.source,
+            }
+            for w in web_items[:3]
+        ],
+    }
+
+    # Call Groq to write a short spoken recommendation
+    answer_text = ""
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are the Answerer agent for a shopping assistant.\n"
+                    "You receive structured data about products from a private catalog "
+                    "and from live web search.\n"
+                    "Write a concise spoken answer (2 to 4 sentences) recommending up to 2 options.\n"
+                    "Respect the user's budget if provided.\n"
+                    "Do not invent details that are not in the data. "
+                    "Do not fabricate prices or ratings.\n"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Here is the data: {json.dumps(summary_payload)}",
+            },
+        ]
+        answer_text = llm_chat(messages, max_tokens=256)
+    except Exception:
+        # Fall back to any existing base_text if LLM fails
+        answer_text = base_text or ""
+
     lines: List[str] = []
 
-    if base_text:
-        lines.append(base_text)
-        lines.append("")  # spacing
+    if answer_text:
+        lines.append(answer_text)
+        lines.append("")
 
     # Catalog product cards
     if rag_items:
@@ -604,8 +680,7 @@ def response_synthesizer(state: LGState) -> LGState:
             lines.append(format_product_card(item))
         lines.append("")
     else:
-        if not base_text:
-            lines.append("🛒 No catalog items found.\n")
+        lines.append("🛒 No catalog items found.\n")
 
     # Web product cards
     if web_items:
@@ -614,10 +689,10 @@ def response_synthesizer(state: LGState) -> LGState:
             lines.append(format_web_product_card(item))
         lines.append("")
     else:
-        if not base_text:
-            lines.append("🌐 No live web items found.\n")
+        lines.append("🌐 No live web items found.\n")
 
-    if not base_text:
+    # Extra explanation when absolutely nothing was found
+    if not rag_items and not web_items:
         lines.append(
             "These products come from two separate sources: "
             "catalog results are offline private data, and web results are live public data."
@@ -625,6 +700,7 @@ def response_synthesizer(state: LGState) -> LGState:
 
     state["response_text"] = "\n".join(lines).strip()
     return state
+
 
 
 # =====================================================================

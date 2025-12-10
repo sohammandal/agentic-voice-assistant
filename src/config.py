@@ -53,7 +53,7 @@ LLM_MAX_TOKENS = 2048
 # ------------------------------------------------------------------------------------
 
 DEFAULT_TOP_K_RAG = 10
-DEFAULT_MAX_WEB_RESULTS = 5
+DEFAULT_MAX_WEB_RESULTS = 10
 
 # The maximum number of products shown in ResponseSynthesizer for readability
 MAX_PRODUCTS_SHOWN = 3
