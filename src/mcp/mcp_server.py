@@ -198,10 +198,6 @@ def main():
             {"cmd": "call", "tool": "...", "payload": {...}}
     """
 
-    # Startup message to stderr
-    sys.stderr.write("[MCP] Server running, listening for commands...\n")
-    sys.stderr.flush()
-
     for line in sys.stdin:
         line = line.strip()
         if not line:

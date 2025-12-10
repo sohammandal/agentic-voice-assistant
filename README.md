@@ -79,17 +79,13 @@ agentic-voice-assistant/
    pre-commit run --all-files
    ```
 
-6. **Run the app:**
+6. **Run the app**
 
-   In one terminal, start the MCP server:
-   ```bash
-   python -m src.mcp.mcp_server
-   ```
+   From the project root:
 
-   In another terminal, run the app:
-   ```bash
-   uv run main.py
-   ```
+      ```bash
+      make run
+      ```
 
 ### What Happens If Hooks Fail?
 
