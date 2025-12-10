@@ -6,6 +6,9 @@ app.py - Step 8: Final Fixes (Memory Management)
 - Fixes formatting issues (No extra asterisks)
 - Restores .m4a support for audio uploads
 """
+# Load environment variables
+from dotenv import find_dotenv, load_dotenv
+load_dotenv(find_dotenv() or ".env")
 
 # Import necessary libraries
 import streamlit as st
@@ -19,9 +22,7 @@ from src.asr.asr import ASRProcessor
 from src.tts.tts import TTSProcessor
 import soundfile as sf
 
-# Load environment variables
-from dotenv import find_dotenv, load_dotenv
-load_dotenv(find_dotenv() or ".env")
+
 
 # Configure the page
 st.set_page_config(
