@@ -73,32 +73,50 @@ def _metadata_to_rag_product(meta: Dict[str, Any], doc_id: str) -> RagProduct:
     Convert your actual metadata dictionary from Chroma into RagProduct format.
     """
 
-    # --- Required fields from your dataset ---
+    # # --- Required fields from your dataset ---
+    # product_id = meta.get("product_id")
+    # product_name = meta.get("product_name")
+    # price = meta.get("price")
+
+    # # Some items have rating, some don't
+    # rating = meta.get("rating")  # may be None
+
+    # brand = meta.get("brand")
+    # ingredients = meta.get("ingredients")
+
+    # # Extra fields you asked for
+    # shipping_weight_lbs = meta.get("shipping_weight_lbs")
+    # model_number = meta.get("model_number")
+
     product_id = meta.get("product_id")
     product_name = meta.get("product_name")
     price = meta.get("price")
-
-    # Some items have rating, some don't
-    rating = meta.get("rating")  # may be None
-
     brand = meta.get("brand")
-    ingredients = meta.get("ingredients")
 
-    # Extra fields you asked for
-    shipping_weight_lbs = meta.get("shipping_weight_lbs")
-    model_number = meta.get("model_number")
-
+    # return RagProduct(
+    #     sku=str(product_id),
+    #     title=str(product_name),
+    #     price=float(price) if price is not None else None,
+    #     rating=rating,
+    #     brand=brand,
+    #     ingredients=ingredients,
+    #     doc_id=str(doc_id),
+    #     shipping_weight_lbs=shipping_weight_lbs,
+    #     model_number=model_number,
+    #     raw_metadata=meta,
+    # )
     return RagProduct(
         sku=str(product_id),
         title=str(product_name),
         price=float(price) if price is not None else None,
-        rating=rating,
+        rating=None,  # Always None
         brand=brand,
-        ingredients=ingredients,
+        ingredients=None,  # Always None
         doc_id=str(doc_id),
-        shipping_weight_lbs=shipping_weight_lbs,
-        model_number=model_number,
+        shipping_weight_lbs=None,  # Not storing this
+        model_number=None,  # Not storing this
         raw_metadata=meta,
+        document_text=document_text,  # ← ADD THIS
     )
 
 
@@ -129,7 +147,7 @@ def rag_search(
         query_texts=[query],
         n_results=top_k,
         where=where,
-        include=["metadatas", "ids"],
+        include=["metadatas", "ids", "documents"],
     )
 
     ids = results.get("ids", [[]])[0]
@@ -138,7 +156,7 @@ def rag_search(
 
     products: List[RagProduct] = []
 
-    for doc_id, meta in zip(ids, metas):
-        products.append(_metadata_to_rag_product(meta, doc_id))
+    for doc_id, meta, document_text in zip(ids, metas, docs):
+        products.append(_metadata_to_rag_product(meta, doc_id, document_text))
 
     return products

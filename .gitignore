@@ -196,6 +196,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+
+*/.DS_Store
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
@@ -206,10 +209,12 @@ data/*
 !data/.gitkeep
 
 # Vector store 
-vector_store/
+vector_store
+src/rag/vector_store/
 
+# DS Store
 .DS_Store
-.Rhistory
 
-# VSCode
-.vscode/*
+
+
+
