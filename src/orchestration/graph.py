@@ -232,7 +232,9 @@ def router_agent(state: LGState) -> LGState:
     u = user_text.lower()
 
     # If user clearly wants recommendations, force product discovery
-    if any(p in u for p in ["recommend", "suggest", "find me", "show me", "help me find"]):
+    if any(
+        p in u for p in ["recommend", "suggest", "find me", "show me", "help me find"]
+    ):
         intent = "product_discovery"
 
     # If user clearly wants comparison, force compare
@@ -242,8 +244,6 @@ def router_agent(state: LGState) -> LGState:
     state["intent"] = intent
     state["last_query"] = user_text
     return state
-
-
 
 
 def router_decision(state: LGState) -> str:

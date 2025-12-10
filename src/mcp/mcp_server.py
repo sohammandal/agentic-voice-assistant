@@ -49,6 +49,7 @@ from typing import Any, Dict
 # Load environment variables from .env if python-dotenv is available
 try:
     from dotenv import find_dotenv, load_dotenv
+
     load_dotenv(find_dotenv() or ".env")
 except Exception:
     # If python-dotenv is not installed, assume env vars are set in the shell
