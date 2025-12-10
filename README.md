@@ -88,6 +88,12 @@ agentic-voice-assistant/
 
       make run
       ```
+7. **Try the assistant:**
+
+   Ask a question like:
+   * _"Recommend window privacy films under $15"_
+   * _"Recommend stainless steel hose clamps under $25"_
+
 
 ### What Happens If Hooks Fail?
 
