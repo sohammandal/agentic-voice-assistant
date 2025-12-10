@@ -1,5 +1,10 @@
 """
-app.py - Streamlit app for Agentic Voice Assistant
+app.py - Step 8: Final Fixes (Memory Management)
+
+- Uses io.BytesIO for TTS to prevent disk fill-up
+- Robust cleanup for ASR temp files
+- Fixes formatting issues (No extra asterisks)
+- Restores .m4a support for audio uploads
 """
 
 # Import necessary libraries
