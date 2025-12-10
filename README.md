@@ -79,15 +79,18 @@ agentic-voice-assistant/
    pre-commit run --all-files
    ```
 
-6. **Run the app**
+6. **Run the app:**
 
-   From the project root, run these two commands:
+   From the project root, run these two commands in separate terminals:
 
-      ```bash
-      python -m src.rag.run_service start
+   ```bash
+   python -m src.rag.run_service start
+   ```
 
-      make run
-      ```
+   ```bash
+   make run
+   ```
+
 7. **Try the assistant:**
 
    Ask a question like:
