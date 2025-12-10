@@ -1,6 +1,7 @@
 # inspect_rag_results.py
 from src.mcp.rag_tool import rag_search
 
+
 def pretty_print_product(p):
     print("--------------------------------------------------")
     print(f"SKU:        {p.sku}")
@@ -14,6 +15,7 @@ def pretty_print_product(p):
     else:
         print("TEXT PREVIEW: <none>")
     print("RAW META KEYS:", list(p.raw_metadata.keys()))
+
 
 if __name__ == "__main__":
     # Try a few queries that should match things in your catalog

@@ -67,6 +67,8 @@ _collection = _client.get_collection(CHROMA_COLLECTION_NAME)
 
 EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 _EMBED_MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
+
+
 # ------------------------------------------------------------------------------
 # Metadata → RagProduct mapper
 # ------------------------------------------------------------------------------
@@ -158,7 +160,6 @@ def rag_search(
         # IMPORTANT: do NOT include "ids" here – Chroma will still return them
         include=["metadatas", "documents"],
     )
-
 
     ids = results.get("ids", [[]])[0]
     metas = results.get("metadatas", [[]])[0]

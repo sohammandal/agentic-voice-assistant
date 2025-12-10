@@ -1,6 +1,8 @@
-from chromadb.config import Settings
 import chromadb
-from src.config import VECTOR_STORE_DIR, CHROMA_COLLECTION_NAME
+from chromadb.config import Settings
+
+from src.config import CHROMA_COLLECTION_NAME, VECTOR_STORE_DIR
+
 
 def main():
     client = chromadb.PersistentClient(
@@ -14,6 +16,7 @@ def main():
     print("METADATAS:")
     for m in peek.get("metadatas", []):
         print(m)
+
 
 if __name__ == "__main__":
     main()
