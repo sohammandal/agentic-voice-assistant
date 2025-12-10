@@ -119,6 +119,7 @@ def initialize_state() -> LGState:
         last_rag_results
         last_web_results
         response_text
+        step_log
     """
     return {
         "user_utterance": None,
@@ -128,6 +129,7 @@ def initialize_state() -> LGState:
         "last_rag_results": [],
         "last_web_results": [],
         "response_text": None,
+        "step_log": [],
     }
 
 
@@ -254,6 +256,11 @@ def router_agent(state: LGState) -> LGState:
 
     state["intent"] = intent
     state["last_query"] = user_text
+
+    log = state.get("step_log", [])
+    log.append(f"Router decided intent = {intent}")
+    state["step_log"] = log
+
     return state
 
 
@@ -423,6 +430,12 @@ def product_discovery_agent(state: LGState) -> LGState:
     state["last_rag_results"] = rag_objs
     state["last_web_results"] = web_objs
 
+    log = state.get("step_log", [])
+    log.append(
+        f"ProductDiscovery called rag.search (got {len(rag_objs)} items) and web.search (got {len(web_objs)} items)"
+    )
+    state["step_log"] = log
+
     # Product Discovery Agent does NOT itself set response_text;
     # Response Synthesizer will do that.
     return state
@@ -487,6 +500,13 @@ def comparison_agent(state: LGState) -> LGState:
     )
 
     state["response_text"] = "\n".join(lines)
+
+    log = state.get("step_log", [])
+    log.append(
+        f"ComparisonAgent compared {len(rag_items)} catalog items and {len(web_items)} web items"
+    )
+    state["step_log"] = log
+
     return state
 
 
@@ -567,6 +587,10 @@ def clarification_agent(state: LGState) -> LGState:
         "and I’ll refine the search."
     )
     state["response_text"] = followup
+
+    log = state.get("step_log", [])
+    log.append("ClarificationAgent updated user_preferences")
+    state["step_log"] = log
 
     return state
 
@@ -699,6 +723,13 @@ def response_synthesizer(state: LGState) -> LGState:
         )
 
     state["response_text"] = "\n".join(lines).strip()
+
+    log = state.get("step_log", [])
+    log.append(
+        f"ResponseSynthesizer produced answer using {len(rag_items)} catalog items and {len(web_items)} web items"
+    )
+    state["step_log"] = log
+
     return state
 
 

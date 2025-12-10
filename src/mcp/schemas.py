@@ -125,3 +125,4 @@ class LGState(TypedDict, total=False):
     last_web_results: List[Dict[str, Any]]
 
     response_text: str
+    step_log: List[str]

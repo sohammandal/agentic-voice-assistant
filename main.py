@@ -86,6 +86,12 @@ def main():
         # Step 4: Output to UI and TTS
         print("\n💬 Assistant:")
         print(final_text)
+
+        # Step log
+        print("\n--- Agent Step Log ---")
+        for entry in updated_state.get("step_log", []):
+            print("•", entry)
+
         print("\n" + "=" * 60 + "\n")
 
         tts_stub(final_text)
