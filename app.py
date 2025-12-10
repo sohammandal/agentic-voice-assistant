@@ -234,8 +234,8 @@ st.markdown("<h1 style='text-align: center; margin-bottom: 0; font-size: 3rem;'>
 st.markdown("<p style='text-align: center; font-size: 1.5rem; font-weight: normal; margin-top: -15px;'>Voice-to-Voice AI for Product Discovery</p>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("Voice Settings")
-    st.write("**Select Voice Gender:**")
+    st.header("Voice Input Options")
+    st.write("Select Voice Gender:")
 
     col1, col2 = st.columns(2)
 
@@ -267,17 +267,17 @@ with st.sidebar:
                 st.success("Voice changed to Female")
                 st.rerun()
 
-    st.caption(f"Current: {st.session_state.voice_gender.title()} voice")
+    # st.caption(f"Current: {st.session_state.voice_gender.title()} voice")
 
     st.divider()
-    st.header("Input Options")
+    st.header("Query Input Options")
     input_method = st.radio(
         "Choose input method:",
         ["Record Audio", "Type Text", "Upload Audio"],
         key="input_method",
     )
     st.divider()
-    st.header("About")
+    st.header("About Application")
     st.info("Uses Voice input, Multi-agent reasoning, and RAG retrieval.")
 
     if st.button("🔄 Reset Conversation"):
