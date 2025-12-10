@@ -30,6 +30,7 @@ dependencies = [
     "num2words>=0.5.14",
     "huggingface-hub>=0.36.0",
     "pyarrow>=21.0.0",
+    "watchdog>=6.0.0",
 ]
 
 [tool.uv]

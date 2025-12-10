@@ -1,22 +1,27 @@
 .PHONY: run server app rag-start rag-stop
 
+PYTHON = uv run python
+STREAMLIT = uv run streamlit
+
 rag-start:
-	uv run python -m src.rag.run_service start
+	$(PYTHON) -m src.rag.run_service start
 
 rag-stop:
-	uv run python -m src.rag.run_service stop
+	$(PYTHON) -m src.rag.run_service stop
 
 server:
-	uv run python -m src.mcp.mcp_server
+	$(PYTHON) -m src.mcp.mcp_server
 
+# Streamlit app only (assumes servers already running)
 app:
-	uv run python main.py
+	$(STREAMLIT) run app.py
 
+# Full stack: RAG + MCP + Streamlit
 run:
 	@set -e; \
-	trap 'uv run python -m src.rag.run_service stop || true; \
+	trap '$(PYTHON) -m src.rag.run_service stop || true; \
 	      kill $$server_pid 2>/dev/null || true' EXIT INT TERM; \
-	uv run python -m src.rag.run_service start; \
-	uv run python -m src.mcp.mcp_server & \
+	$(PYTHON) -m src.rag.run_service start; \
+	$(PYTHON) -m src.mcp.mcp_server & \
 	server_pid=$$!; \
-	uv run python main.py
+	$(STREAMLIT) run app.py
