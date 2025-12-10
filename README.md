@@ -81,7 +81,7 @@ agentic-voice-assistant/
 
 6. **Run the app:**
 
-   From the project root, run this command to start the RAG Server, MCP Server and CLI tool:
+   From the project root, run this command to start the RAG Server, MCP Server and Streamlit app:
 
    ```bash
    make run
@@ -90,8 +90,8 @@ agentic-voice-assistant/
 7. **Try the assistant:**
 
    Ask a question like:
-   * _"Recommend window privacy films under $15"_
-   * _"Recommend stainless steel hose clamps under $25"_
+   * _Recommend window privacy films under $15_
+   * _Recommend stainless steel hose clamps under $25_
 
 
 ### What Happens If Hooks Fail?
