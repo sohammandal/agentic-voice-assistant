@@ -26,6 +26,7 @@ from langgraph.graph import END, START, StateGraph
 from src.config import (
     DEFAULT_MAX_WEB_RESULTS,
     DEFAULT_TOP_K_RAG,
+    PROJECT_ROOT,
 )
 from src.llm.groq_llm import llm_chat
 
@@ -57,9 +58,9 @@ def _ensure_mcp_process():
     """Start MCP server as a persistent subprocess if not already running."""
     global _MCP_PROCESS
     if _MCP_PROCESS is None or _MCP_PROCESS.poll() is not None:
-        # Launch mcp_server.py once, keep it running
         _MCP_PROCESS = subprocess.Popen(
-            ["python", "mcp_server.py"],
+            ["python", "-m", "src.mcp.mcp_server"],
+            cwd=str(PROJECT_ROOT),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -200,18 +201,9 @@ CRITICAL RULE FOR COMPARISON:
 
 
 def router_agent(state: LGState) -> LGState:
-    """
-    Router Agent
-
-    Input: state["user_utterance"]
-    Output: state with:
-        - intent
-        - last_query
-    """
-
     user_text = state.get("user_utterance", "") or ""
 
-    # If empty input → default to product discovery
+    # If empty input -> default to product discovery
     if not user_text.strip():
         state["intent"] = "product_discovery"
         state["last_query"] = ""
@@ -236,10 +228,22 @@ def router_agent(state: LGState) -> LGState:
     llm_output = llm_chat(messages)
     intent = extract_intent(llm_output)
 
+    # Heuristic override based on raw user text
+    u = user_text.lower()
+
+    # If user clearly wants recommendations, force product discovery
+    if any(p in u for p in ["recommend", "suggest", "find me", "show me", "help me find"]):
+        intent = "product_discovery"
+
+    # If user clearly wants comparison, force compare
+    if any(p in u for p in ["compare", " vs ", " versus "]):
+        intent = "compare"
+
     state["intent"] = intent
     state["last_query"] = user_text
-
     return state
+
+
 
 
 def router_decision(state: LGState) -> str:
@@ -556,13 +560,6 @@ def clarification_agent(state: LGState) -> LGState:
     return state
 
 
-def clarification_decision(_state: LGState) -> str:
-    """
-    After Clarification Agent, we always route back to Router Agent.
-    """
-    return "router_agent"
-
-
 # =====================================================================
 # PART 6 — RESPONSE SYNTHESIZER
 # =====================================================================
@@ -587,6 +584,12 @@ def response_synthesizer(state: LGState) -> LGState:
     rag_items = state.get("last_rag_results", [])
     web_items = state.get("last_web_results", [])
     base_text = state.get("response_text", "")
+
+    if state.get("intent") == "clarification":
+        if not base_text:
+            base_text = "I’ve updated your preferences."
+        state["response_text"] = base_text
+        return state
 
     lines: List[str] = []
 
@@ -636,8 +639,8 @@ START
 router_agent
   ↓ (via router_decision)
   ├── product_discovery_agent → response_synthesizer → END
-  ├── comparison_agent        → response_synthesizer → END
-  └── clarification_agent     → router_agent (loop)
+  └── comparison_agent        → response_synthesizer → END
+  └── clarification_agent -> response_synthesizer -> END
 """
 
 graph = StateGraph(LGState)
@@ -667,14 +670,8 @@ graph.add_edge("product_discovery_agent", "response_synthesizer")
 graph.add_edge("comparison_agent", "response_synthesizer")
 graph.add_edge("response_synthesizer", END)
 
-# Clarification → Router loop
-graph.add_conditional_edges(
-    "clarification_agent",
-    clarification_decision,
-    {
-        "router_agent": "router_agent",
-    },
-)
+# Clarification → Synthesizer → END
+graph.add_edge("clarification_agent", "response_synthesizer")
 
 workflow = graph.compile()
 

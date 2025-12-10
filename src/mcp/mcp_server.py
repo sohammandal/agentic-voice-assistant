@@ -46,9 +46,18 @@ import sys
 import traceback
 from typing import Any, Dict
 
-from rag_tool import rag_search
-from schemas import RagProduct, WebProduct
-from web_tool import web_search
+# Load environment variables from .env if python-dotenv is available
+try:
+    from dotenv import find_dotenv, load_dotenv
+    load_dotenv(find_dotenv() or ".env")
+except Exception:
+    # If python-dotenv is not installed, assume env vars are set in the shell
+    pass
+
+
+from .rag_tool import rag_search
+from .schemas import RagProduct, WebProduct
+from .web_tool import web_search
 
 # ------------------------------------------------------------------------------
 # JSON Schemas (used for tool discovery)
