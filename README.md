@@ -25,12 +25,14 @@ agentic-voice-assistant/
 ├── src/
 │   ├── asr/                    # Speech-to-text logic
 │   ├── tts/                    # Text-to-speech synthesis
-│   ├── agents/                 # LangGraph agents (router, planner etc.)
+│   ├── orchestration           # LangGraph agents (router, planner etc.)
+│   ├── llm                     # LLM API Call Utility
 │   ├── rag/                    # Private dataset indexing and retrieval
 │   ├── mcp/                    # MCP server + tool schemas
 │   └── ui/                     # Streamlit / frontend app
 ├── data/                       # Amazon dataset slices or indexes
 ├── notebooks/                  # Data prep & EDA
+├── vector_store/               # Local directory with Chrome DB (gitignored)
 ├── pyproject.toml              # Project and dev config
 ├── uv.lock                     # Locked dependencies
 ├── .pre-commit-config.yaml     # Pre-commit hooks for linting/formatting
