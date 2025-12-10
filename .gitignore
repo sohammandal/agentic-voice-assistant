@@ -212,8 +212,18 @@ data/*
 vector_store
 src/rag/vector_store/
 
+# Embedding model (downloaded from HuggingFace)
+src/rag/embedding_model/
+
+# Embedding service PID/port files
+src/rag/.embedding_service.pid
+src/rag/.embedding_service.port
+
 # DS Store
 .DS_Store
+
+# VS Code
+.vscode/
 
 
 
