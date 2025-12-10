@@ -81,11 +81,7 @@ agentic-voice-assistant/
 
 6. **Run the app:**
 
-   From the project root, run these two commands in separate terminals:
-
-   ```bash
-   python -m src.rag.run_service start
-   ```
+   From the project root, run this command to start the RAG Server, MCP Server and CLI tool:
 
    ```bash
    make run
