@@ -229,8 +229,9 @@ st.markdown(
 )
 
 # Add title and sidebar
-st.title("Agentic Voice Assistant")
-st.subheader("Voice-to-Voice AI for Product Discovery")
+# Use HTML for centering
+st.markdown("<h1 style='text-align: center; margin-bottom: 0; font-size: 3rem;'>Agentic Voice Assistant</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 1.5rem; font-weight: normal; margin-top: -15px;'>Voice-to-Voice AI for Product Discovery</p>", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Voice Settings")
@@ -240,7 +241,7 @@ with st.sidebar:
 
     with col1:
         if st.button(
-            "🎙️ Male",
+            "👨 Male",
             use_container_width=True,
             type="primary" if st.session_state.voice_gender == "male" else "secondary",
         ):
@@ -253,7 +254,7 @@ with st.sidebar:
 
     with col2:
         if st.button(
-            "🎙️ Female",
+            "👩 Female",
             use_container_width=True,
             type="primary"
             if st.session_state.voice_gender == "female"
