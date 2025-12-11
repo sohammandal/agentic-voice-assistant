@@ -470,6 +470,7 @@ if st.session_state.last_response:
             table_df.index = [""] * len(table_df)  # hide index labels
             st.table(table_df)
 
+        remaining = re.sub(r"^\*\*(?!#)", "", remaining, flags=re.MULTILINE)
         st.divider()
         st.markdown(remaining)
 
