@@ -3,36 +3,43 @@
 This document collects all the main prompts used by the system, grouped by agent and tool.
 
 It is meant to satisfy the Prompt Disclosure requirement in the grading rubric:
-- System prompts
-- Router and planner tool prompts
-- JSON format instructions
-- Safety related instructions
-- How prompts map to code and agents
+
+* System prompts
+* Router and planner tool prompts
+* JSON format instructions
+* Safety related instructions
+* How prompts map to code and agents
 
 The model is configured in:
 
-- `src/config.py`  
-  - `GROQ_MODEL_NAME = "llama-3.3-70b-versatile"`  
-  - `LLM_TEMPERATURE` and `LLM_MAX_TOKENS`  
-- `src/llm/groq_llm.py`  
-  - `llm_chat` wraps the Groq client
+* `src/config.py`
 
-Each section below shows the **system prompt** and how it is used.
+  * `GROQ_MODEL_NAME = "llama-3.3-70b-versatile"`
+  * `LLM_TEMPERATURE` and `LLM_MAX_TOKENS`
+* `src/llm/groq_llm.py`
+
+  * `llm_chat` wraps the Groq client
+
+Each section below shows the system prompt and how it is used.
 
 ---
 
 ## 1. Router Agent
 
-**Code location**  
-- File: `src/orchestration/graph.py`  
-- Function: `router_agent`  
+**Code location**
 
-**Role**  
-- Classifies the user intent into:
-  - `product_discovery`
-  - `compare`
-  - `clarification`
-- Also seeds budget into `user_preferences` via regex
+* File: `src/orchestration/graph.py`
+* Function: `router_agent`
+
+**Role**
+
+* Classifies the user intent into:
+
+  * `product_discovery`
+  * `compare`
+  * `clarification`
+* Seeds a numeric budget into `user_preferences` via regex
+* Applies a simple keyword based safety check for dangerous product domains
 
 **System prompt**
 
@@ -44,7 +51,7 @@ Choose one of:
 - compare            (user wants comparison of items already found)
 - clarification      (user unsure, talking about budget/preferences)
 Respond in natural language. Do NOT call tools.
-````
+```
 
 **User message format**
 
@@ -54,8 +61,16 @@ Respond in natural language. Do NOT call tools.
 
 Heuristics in code then override this classification for phrases like:
 
-* "recommend", "suggest", "find me", "show me" ⇒ force `product_discovery`
-* "compare", " vs ", " versus " ⇒ force `compare`
+* "recommend", "suggest", "find me", "show me"  -> force `product_discovery`
+* "compare", " vs ", " versus "                -> force `compare`
+
+The safety check is not LLM based. The router uses a small banned keyword list (for example "bomb", "explosive", "weapon") and, if matched, sets:
+
+* `state["safety_flags"]["blocked"] = True`
+* `state["response_text"]` to a fixed safety message
+* `state["intent"] = "blocked"`
+
+In that case the graph goes straight to the Response Synthesizer without calling tools.
 
 ---
 
@@ -106,7 +121,7 @@ User request: {user_utterance}
 Known preferences: {user_preferences as JSON}
 ```
 
-The JSON returned by the model is parsed and merged into a default plan, then further adjusted by code to add actual Chroma filters.
+The JSON returned by the model is parsed and merged into a default plan, then further adjusted by code to add actual Chroma filters from the budget and category hints.
 
 ---
 
@@ -119,12 +134,13 @@ The JSON returned by the model is parsed and merged into a default plan, then fu
 
 **Role**
 
-* This is the **only** agent allowed to call MCP tools.
+* This is the only agent allowed to call MCP tools.
 * It uses the LLM to suggest tool calls, then the code normalizes them and enforces the planned settings (top_k, filters, etc).
-* Calls:
+* It calls:
 
   * `rag.search` for private catalog
   * `web.search` for live web pricing and availability
+* After retrieval, code runs a simple conflict detector to compare catalog vs web prices and stores any discrepancies in `state["price_conflicts"]` for downstream use.
 
 **System prompt**
 
@@ -155,7 +171,17 @@ The model output is parsed as JSON. The code then:
 
 * Aligns `top_k`, `max_results`, and `filters` with `state["plan"]`
 * Ensures at most one call to each tool per turn
-* Falls back to a deterministic plan based tool call if JSON parsing fails
+* Falls back to a deterministic, plan based tool call if JSON parsing fails
+
+Conflict handling is implemented in code, not in this prompt. The agent:
+
+* Builds light weight views of catalog and web items (sku, title, brand, price, url)
+* Matches items by overlapping brand or title text
+* Flags a conflict when the web price differs from the catalog price by:
+
+  * at least 0.50 currency units, and
+  * at least 10 percent relative difference
+* Stores a small list of conflicts in `state["price_conflicts"]` plus a log entry
 
 ---
 
@@ -169,7 +195,8 @@ The model output is parsed as JSON. The code then:
 **Role**
 
 * Extracts user preferences when the intent is `clarification`
-* If a safety flag is set (unsafe query), it **skips** preference extraction and preserves the safety response instead
+* Does not call any tools
+* Safety is handled upstream in the Router, so this agent only runs for allowed queries
 
 **System prompt**
 
@@ -198,9 +225,7 @@ Return STRICT JSON ONLY:
 {user_utterance}
 ```
 
-If YAML or JSON parsing fails, the code falls back to a default structure with nulls.
-
-For safety blocked queries, the agent does not call this prompt and instead returns a fixed safety message.
+If JSON parsing fails, the code falls back to a default structure with nulls and leaves existing preferences unchanged.
 
 ---
 
@@ -213,12 +238,15 @@ For safety blocked queries, the agent does not call this prompt and instead retu
 
 **Role**
 
-* Generate the **short spoken recommendation** that TTS reads
+* Generate the short spoken recommendation that TTS reads
 * Respect price budget
 * Use only grounded data from:
 
   * `catalog_items` (private RAG results)
   * `web_items` (live web results)
+* Render catalog and web cards for the UI
+* Optionally append a small conflict summary if `state["price_conflicts"]` is non empty
+  (that conflict text is a fixed template in code, not driven by a prompt)
 
 **System prompt**
 
@@ -226,6 +254,7 @@ For safety blocked queries, the agent does not call this prompt and instead retu
 You are the Answerer agent for a shopping assistant.
 You receive structured data about products from a private catalog and from live web search.
 Write a concise spoken answer (2 to 4 sentences) recommending up to 2 options.
+If both sources have relevant items, briefly compare them on factors such as price and features.
 Respect the user's budget if provided.
 Do not invent details that are not in the data. Do not fabricate prices or ratings.
 ```
@@ -240,25 +269,40 @@ Where `summary_payload` includes:
 
 * `original_query`
 * `budget`
-* `catalog_items`: list of up to 3 items with title, price, brand, rating, features, model number, etc
+* `catalog_items`: list of up to 3 items with title, price, brand, rating, model number, weight, and selected metadata like features and category
 * `web_items`: list of up to 3 web products with title, price, availability, and source
 
-The text generated here becomes the first paragraph of the final `response_text` and is used for TTS.
+The text generated here becomes the first paragraph of the final `response_text` and is used for TTS. The product cards and the optional conflict summary section are added by code after this LLM call.
 
 ---
 
 ## 6. Safety messages
 
-In addition to the prompts above, the system uses fixed string messages for unsafe requests and does not rely on the LLM to decide safety at generation time.
+Safety handling is intentionally simple and mostly hard coded, not prompt based.
 
-**Examples of hard coded safety responses**
+**Router safety check**
 
-* In the Clarification agent when a query is blocked:
+In `router_agent`, before calling the LLM, the system:
 
-```text
-I am not able to help with potentially dangerous or restricted products.
-I can help you find everyday household items and common cleaning products instead.
+* Lowercases the user text
+* Checks it against a small banned keyword list, for example:
+
+  * `"explosive"`, `"bomb"`, `"pesticide"`, `"poison"`, `"weapon"`, `"gunpowder"`, etc
+* If any banned keyword is present, it sets:
+
+```python
+state["safety_flags"]["blocked"] = True
+state["safety_flags"]["reason"] = "disallowed or dangerous product category"
+state["intent"] = "blocked"
+state["last_query"] = user_text
+state["response_text"] = (
+    "I can’t help with that request. Please ask about safe, legal household items instead."
+)
 ```
+
+The graph then routes directly to the Response Synthesizer, which simply returns this fixed `response_text` to the UI and TTS. No tools are called and no additional LLM prompts are used.
+
+There is no separate safety generation prompt. Safety behavior is controlled by this allowlist based guard and fixed messages.
 
 ---
 
@@ -275,7 +319,7 @@ The MCP server itself (`src/mcp/mcp_server.py`) does not use LLM prompts. It sim
   * `rag_search` in `src/mcp/rag_tool.py`
   * `web_search` in `src/mcp/web_tool.py`
 
-The **LLM side instructions** about how to use these tools are all in:
+The LLM side instructions about how to use these tools are all in:
 
 * Planner Agent prompt
 * Product Discovery Agent prompt

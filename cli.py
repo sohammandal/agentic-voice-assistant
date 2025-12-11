@@ -1,5 +1,5 @@
 """
-main.py
+cli.py
 
 Entry point for the Agentic Voice-to-Voice Product Discovery System.
 

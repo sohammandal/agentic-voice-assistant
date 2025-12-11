@@ -122,6 +122,7 @@ def initialize_state() -> LGState:
         step_log
         plan
         safety_flags
+        price_conflicts
     """
     return {
         "user_utterance": None,
@@ -134,6 +135,7 @@ def initialize_state() -> LGState:
         "step_log": [],
         "plan": {},
         "safety_flags": {},
+        "price_conflicts": [],  # catalog vs web price differences
     }
 
 
@@ -213,6 +215,65 @@ def format_web_product_card(product: WebProduct) -> str:
     if product.availability:
         out += f"- Availability: {product.availability}\n"
     return out
+
+
+def detect_price_conflicts(catalog_items: list, web_items: list) -> list[dict]:
+    """
+    Very simple conflict detector:
+    - tries to match items by overlapping brand or title text
+    - flags when price differs more than 10 percent and 0.50 units
+    Returns a list of conflict dicts.
+    """
+    conflicts: list[dict] = []
+
+    if not catalog_items or not web_items:
+        return conflicts
+
+    def norm(s: str) -> str:
+        return (s or "").lower().strip()
+
+    for cat in catalog_items:
+        c_title = norm(cat.get("title", ""))
+        c_brand = norm(cat.get("brand", ""))
+        c_price = cat.get("price")
+        if c_price is None:
+            continue
+
+        for web in web_items:
+            w_title = norm(web.get("title", ""))
+            w_brand = norm(web.get("brand", ""))
+            w_price = web.get("price")
+            if w_price is None:
+                continue
+
+            # Very cheap matching rule:
+            title_overlap = (
+                c_title and c_title[:20] in w_title or w_title[:20] in c_title
+            )
+            brand_overlap = c_brand and (c_brand in w_title or c_brand == w_brand)
+
+            if not (title_overlap or brand_overlap):
+                continue
+
+            diff = abs(float(w_price) - float(c_price))
+            rel_diff = diff / max(float(c_price), 1.0)
+
+            if diff >= 0.5 and rel_diff >= 0.10:
+                conflicts.append(
+                    {
+                        "sku": cat.get("sku"),
+                        "title": cat.get("title"),
+                        "catalog_price": float(c_price),
+                        "web_price": float(w_price),
+                        "web_url": web.get("url"),
+                    }
+                )
+                break  # stop after first web match for this catalog item
+
+        if len(conflicts) >= 3:
+            break  # cap to a few so the prompt does not explode
+
+    return conflicts
 
 
 # =====================================================================
@@ -651,7 +712,41 @@ def product_discovery_agent(state: LGState) -> LGState:
     state["last_rag_results"] = rag_objs
     state["last_web_results"] = web_objs
 
+    # 6) Detect price conflicts between catalog and web results
+    conflicts_input_catalog = [
+        {
+            "sku": p.sku,
+            "title": p.title,
+            "brand": p.brand,
+            "price": p.price,
+        }
+        for p in rag_objs
+        if p.price is not None
+    ]
+
+    conflicts_input_web = [
+        {
+            "title": w.title,
+            # try to pull brand from raw if available; ok if this is None
+            "brand": (w.raw or {}).get("brand") if isinstance(w.raw, dict) else None,
+            "price": w.price,
+            "url": w.url,
+        }
+        for w in web_objs
+        if w.price is not None
+    ]
+
+    conflicts = detect_price_conflicts(conflicts_input_catalog, conflicts_input_web)
+    state["price_conflicts"] = conflicts
+
     log = state.get("step_log", [])
+    if conflicts:
+        log.append(
+            f"ConflictDetector found {len(conflicts)} price conflicts between catalog and web results."
+        )
+    else:
+        log.append("ConflictDetector found no price conflicts.")
+
     log.append(
         f"ProductDiscovery called rag.search (got {len(rag_objs)} items) and web.search (got {len(web_objs)} items)"
     )
@@ -984,6 +1079,28 @@ def response_synthesizer(state: LGState) -> LGState:
     else:
         lines.append("🌐 No live web items found.\n")
 
+    # Price conflict summary between catalog and live web
+    conflicts = state.get("price_conflicts") or []
+    if conflicts:
+        lines.append("⚠️ **Price differences between catalog and live web:**")
+        for c in conflicts[:3]:
+            try:
+                catalog_price = float(c.get("catalog_price", 0.0))
+                web_price = float(c.get("web_price", 0.0))
+                lines.append(
+                    f"- {c.get('title', 'Unknown item')}: "
+                    f"catalog ${catalog_price:.2f} vs web ${web_price:.2f} "
+                    f"(link: {c.get('web_url', 'N/A')})"
+                )
+            except Exception:
+                # If anything is weird, skip formatting that entry
+                continue
+        lines.append(
+            "Prices can legitimately differ because the private catalog is static "
+            "while web prices change over time."
+        )
+        lines.append("")
+
     # Extra explanation when absolutely nothing was found
     if not rag_items and not web_items:
         lines.append(
@@ -994,9 +1111,12 @@ def response_synthesizer(state: LGState) -> LGState:
     state["response_text"] = "\n".join(lines).strip()
 
     log = state.get("step_log", [])
+    conflicts = state.get("price_conflicts") or []
     log.append(
-        f"ResponseSynthesizer produced answer using {len(rag_items)} catalog items and {len(web_items)} web items"
+        f"ResponseSynthesizer produced answer using {len(rag_items)} catalog items, "
+        f"{len(web_items)} web items, and {len(conflicts)} price conflicts."
     )
+
     state["step_log"] = log
 
     return state

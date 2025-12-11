@@ -9,33 +9,39 @@
 The system has five main layers:
 
 1. **User Interface (UI)**
-   - `app.py` (Streamlit)
-   - Mic recording or audio upload
-   - Transcript display
-   - Comparison table
-   - Agent step log
-   - TTS audio playback
+
+   * `app.py` (Streamlit)
+   * Mic recording or audio upload
+   * Transcript display
+   * Comparison table
+   * Agent step log
+   * TTS audio playback
 
 2. **ASR and TTS**
-   - ASR: `src/asr/asr.py` – Whisper based `ASRProcessor`
-   - TTS: `src/tts/tts.py` – SpeechT5 based `TTSProcessor`
-   - Fragment based flow: record or upload audio, then send whole file to ASR, then synthesize a short answer and play it back
+
+   * ASR: `src/asr/asr.py` – Whisper based `ASRProcessor`
+   * TTS: `src/tts/tts.py` – SpeechT5 based `TTSProcessor`
+   * Fragment based flow: record or upload audio, then send whole file to ASR, then synthesize a short answer and play it back
 
 3. **Orchestration (LangGraph)**
-   - `src/orchestration/graph.py`
-   - Multi agent stateful graph that decides intent, plans tool calls, retrieves data, and synthesizes answers
+
+   * `src/orchestration/graph.py`
+   * Multi agent stateful graph that decides intent, plans tool calls, retrieves data, detects basic price conflicts, and synthesizes answers
 
 4. **MCP Server and Tools**
-   - `src/mcp/mcp_server.py`
-   - `src/mcp/rag_tool.py`
-   - `src/mcp/web_tool.py`
-   - Exposes two tools:
-     - `rag.search` for private catalog search (Amazon 2020 slice)
-     - `web.search` for live web search via Serper
+
+   * `src/mcp/mcp_server.py`
+   * `src/mcp/rag_tool.py`
+   * `src/mcp/web_tool.py`
+   * Exposes two tools:
+
+     * `rag.search` for private catalog search (Amazon 2020 slice)
+     * `web.search` for live web search via Serper
 
 5. **RAG Vector Store**
-   - `src/rag/…` (see `docs/rag-overview.md` for details)
-   - Chroma based vector store and metadata filters over the curated Amazon Product Dataset 2020 slice
+
+   * `src/rag/…` (see `docs/rag-overview.md` for details)
+   * Chroma based vector store and metadata filters over the curated Amazon Product Dataset 2020 slice
 
 ---
 
@@ -44,25 +50,31 @@ The system has five main layers:
 A typical product recommendation query flows like this:
 
 1. **User speaks**
-   - In the Streamlit UI, the user records or uploads audio
+
+   * In the Streamlit UI, the user records or uploads audio
 
 2. **ASR**
-   - `ASRProcessor.encode_audio(path)` uses Whisper to transcribe the audio
-   - Transcribed text is shown in the UI and passed to the LangGraph workflow
+
+   * `ASRProcessor.encode_audio(path)` uses Whisper to transcribe the audio
+   * Transcribed text is shown in the UI and passed to the LangGraph workflow
 
 3. **LangGraph multi agent workflow**
-   - `run_graph(user_text, state)` in `graph.py`
-   - Updates the persistent `LGState` and returns `response_text` plus logs
+
+   * `run_graph(user_text, state)` in `graph.py`
+   * Updates the persistent `LGState` and returns `response_text` plus logs
 
 4. **TTS**
-   - The first paragraph of `response_text` is converted to speech using `TTSProcessor.decode_audio`
-   - The audio is played in the Streamlit app
+
+   * The first paragraph of `response_text` is converted to speech using `TTSProcessor.decode_audio`
+   * The audio is played in the Streamlit app
 
 5. **UI rendering**
-   - The full `response_text` is split into:
-     - A short spoken answer (first paragraph)
-     - A structured product section that is parsed into a comparison table
-   - Remaining markdown shows the catalog and web item cards plus citations
+
+   * The full `response_text` is split into:
+
+     * A short spoken answer (first paragraph)
+     * A structured product section that is parsed into a comparison table
+   * Remaining markdown shows the catalog and web item cards, citations, and an optional price conflict summary when catalog and web prices disagree
 
 ---
 
@@ -70,15 +82,16 @@ A typical product recommendation query flows like this:
 
 The shared state is represented by `LGState` (a TypedDict) in `src/mcp/schemas.py`. Key fields:
 
-- `user_utterance` – latest user text
-- `intent` – router classified intent: `"product_discovery"`, `"compare"`, or `"clarification"`
-- `last_query` – last user query passed to tools
-- `user_preferences` – budget, category, brand, and other preferences extracted so far
-- `last_rag_results` – list of structured `RagProduct` objects from `rag.search`
-- `last_web_results` – list of structured `WebProduct` objects from `web.search`
-- `response_text` – final answer text that goes to UI and TTS
-- `step_log` – list of human readable log strings used in the "Agent Step Log" panel
-- `plan` – planner output dict containing tool usage and filter decisions
+* `user_utterance` – latest user text
+* `intent` – router classified intent: `"product_discovery"`, `"compare"`, or `"clarification"`
+* `last_query` – last user query passed to tools
+* `user_preferences` – budget, category, brand, and other preferences extracted so far
+* `last_rag_results` – list of structured `RagProduct` objects from `rag.search`
+* `last_web_results` – list of structured `WebProduct` objects from `web.search`
+* `price_conflicts` – list of detected price discrepancies between catalog and web results used for conflict handling
+* `response_text` – final answer text that goes to UI and TTS
+* `step_log` – list of human readable log strings used in the "Agent Step Log" panel
+* `plan` – planner output dict containing tool usage and filter decisions
 
 ---
 
@@ -112,21 +125,22 @@ The graph is defined in `src/orchestration/graph.py` using `langgraph.graph.Stat
    ┌────────────────────────────────────────────────────────┐
    │                 RESPONSE SYNTHESIZER                   │
    │  Final answer for UI and TTS                           │
+   │  Includes optional price conflict summary              │
    └────────────────────────────────────────────────────────┘
                                │
                                ▼
                               END
-````
+```
 
 * **Main path** for recommendations:
 
   * Router → Planner → Product Discovery Agent → Response Synthesizer → END
 * **Compare branch**:
 
-  * Router (intent "compare") → Comparison Agent → Response Synthesizer → END
+  * Router (intent `"compare"`) → Comparison Agent → Response Synthesizer → END
 * **Clarification branch**:
 
-  * Router (intent "clarification" or safety blocked) → Clarification Agent → Response Synthesizer → END
+  * Router (intent `"clarification"` or safety blocked) → Clarification Agent → Response Synthesizer → END
 
 There is no loop back into Router. Each user turn runs the graph once with the current state.
 
@@ -144,8 +158,8 @@ File: `router_agent` in `graph.py`
 * Uses Groq LLM (`llm_chat`) to classify intent in natural language
 * Heuristics:
 
-  * Phrases like "recommend", "find me", "suggest" force `"product_discovery"`
-  * Phrases like "compare", "vs", "versus" force `"compare"`
+  * Phrases like `"recommend"`, `"find me"`, `"suggest"` force `"product_discovery"`
+  * Phrases like `"compare"`, `"vs"`, `"versus"` force `"compare"`
   * Extracts a simple numeric budget from strings like `"under $25"`
 * Writes:
 
@@ -218,11 +232,17 @@ This is the **only agent** that is allowed to call tools.
 
   * `RagProduct` objects for catalog results
   * `WebProduct` objects for live web results
+* Runs a lightweight price conflict detector:
+
+  * Builds small dict views of catalog and web items (sku/title/brand/price/url)
+  * Matches items by overlapping title or brand text
+  * Flags conflicts when the web price differs from the catalog price by at least 0.50 units and at least 10 percent
 * Writes:
 
   * `state["last_rag_results"]`
   * `state["last_web_results"]`
-  * log entry: how many catalog and web items were retrieved
+  * `state["price_conflicts"]` – a short list of detected catalog vs web price discrepancies
+  * log entries for retrieval counts and whether conflicts were found
 
 This agent does not build the final text answer.
 
@@ -285,6 +305,7 @@ File: `response_synthesizer` in `graph.py`
   * `state["last_web_results"]`
   * `state["last_query"]`
   * `state["user_preferences"]` (budget)
+  * `state["price_conflicts"]` (optional list of catalog vs web price discrepancies)
   * optionally `state["response_text"]` from Comparison or Clarification
 
 * Steps:
@@ -300,17 +321,19 @@ File: `response_synthesizer` in `graph.py`
   4. Calls Groq LLM to produce a short spoken style answer, 2 to 4 sentences
   5. Appends formatted catalog and web product cards:
 
-     * Catalog section header:
-       `### Catalog Items (Private Amazon 2020 Dataset)`
-     * Web section header:
-       `### Live Web Items`
+     * Catalog section header: `### Catalog Items (Private Amazon 2020 Dataset)`
+     * Web section header: `### Live Web Items`
+  6. If `price_conflicts` is non empty, appends a small conflict handling section:
+
+     * `⚠️ Price differences between catalog and live web` with up to three entries like
+       `catalog $X vs web $Y (link: URL)`, plus a one line note that catalog data is static while web prices change over time
 
 * Writes:
 
   * `state["response_text"]` – the full message used for both TTS and UI
-  * log entry describing how many items were used
+  * log entry describing how many items and conflicts were used
 
-The Streamlit app then parses the product card section to build the comparison table.
+The Streamlit app then parses the product card section to build the comparison table, and shows the conflict summary inline when present.
 
 ---
 
@@ -338,6 +361,7 @@ File: `app.py`
 
   * `conversation_state` – LangGraph state across turns
   * last response, last query, TTS audio, transcription
+
 * For each user turn:
 
   1. Collects input (ASR text or typed text)
@@ -351,13 +375,15 @@ File: `app.py`
   6. Splits the remaining text into:
 
      * A structured product section that feeds `build_product_table`
-     * Remaining markdown for display
+     * Remaining markdown for display, including the optional conflict summary block
+
 * Renders:
 
   * Top short answer text (the part used for TTS)
   * Audio player
   * Comparison table for catalog and web results
   * Raw markdown with catalog and web cards
+  * Conflict summary when catalog and web prices diverge
   * Agent Step Log with each entry from `state["step_log"]`
 
 ---
@@ -373,11 +399,13 @@ Flow:
 
 * Router → Planner → Product Discovery Agent → Response Synthesizer → END
 * Both `rag.search` and `web.search` are called
+* A lightweight price conflict check runs between catalog and web items
 * UI shows:
 
   * Short spoken recommendation
   * Comparison table
   * Catalog and web cards
+  * If catalog and web prices differ beyond the threshold, a small conflict section that highlights those differences
 
 ### 8.2 Follow up comparison
 
@@ -387,7 +415,7 @@ User (second turn):
 Flow:
 
 * Router sets `intent = "compare"`
-* router_decision sends state to `comparison_agent`
+* `router_decision` sends state to `comparison_agent`
 * Comparison Agent builds a comparison summary
 * Response Synthesizer wraps it into the final answer
 
@@ -401,7 +429,7 @@ Flow:
 * Router:
 
   * Flags the request as unsafe using a keyword based allow list
-  * Sets intent to clarification or an internal safety intent
+  * Sets intent to a safety oriented path
   * Writes a safety oriented message into `response_text`
 * Clarification Agent:
 
@@ -413,4 +441,4 @@ Flow:
 
 ---
 
-This architecture combines voice input, multi agent planning, private RAG, MCP tools, and TTS into a single reproducible pipeline that is easy to reason about and demo end to end.
+This architecture combines voice input, multi agent planning, private RAG, MCP tools, conflict handling between catalog and live web prices, and TTS into a single reproducible pipeline that is easy to reason about and demo end to end.
