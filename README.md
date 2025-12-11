@@ -22,19 +22,19 @@ It uses:
 ```
 agentic-voice-assistant/
 ├── app.py                      # Streamlit entrypoint
-├── cli.py                      # Entrypoint for CLI
+├── cli.py                      # CLI entrypoint
 ├── Makefile                    # Commands to spin up servers and launch app
 ├── src/
 │   ├── asr/                    # Speech-to-text logic
 │   ├── tts/                    # Text-to-speech synthesis
 │   ├── orchestration/          # LangGraph agents (router, planner etc.)
-│   ├── llm/                    # LLM API Call Utility
+│   ├── llm/                    # LLM API call utility
 │   ├── rag/                    # Private dataset indexing and retrieval
 │   └── mcp/                    # MCP server + tool schemas
 ├── data/                       # Amazon dataset slices (gitignored)
 ├── docs/                       # Detailed project documentation
 ├── notebooks/                  # Data prep & EDA
-├── vector_store/               # Local Chrome DB (gitignored)
+├── vector_store/               # Local ChromaDB (gitignored)
 ├── pyproject.toml              # Project and dev config
 ├── uv.lock                     # Locked dependencies
 ├── .pre-commit-config.yaml     # Pre-commit hooks for linting/formatting
@@ -160,7 +160,6 @@ uv sync
 Full technical documentation has been moved into the `docs/` folder:
 
 - **`docs/architecture.md`** – LangGraph multi-agent design, planner rules, routing, safety
-- **`docs/rag-overview.md`** – private dataset indexing, embeddings, hybrid retrieval
+- **`docs/rag-overview.md`** – Private dataset indexing, embeddings, hybrid retrieval
 - **`docs/mcp-tools.md`** – MCP server, tool schemas, discovery, caching, logging
-- **`docs/prompts.md`** – all system prompts, tool prompts, planner rubric, safety prompts
-
+- **`docs/prompts.md`** – All system prompts, tool prompts, planner rubric, safety prompts
