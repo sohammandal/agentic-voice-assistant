@@ -21,16 +21,16 @@ It uses:
 
 ```
 agentic-voice-assistant/
+├── app.py                      # Streamlit entrypoint
 ├── main.py                     # Entry point
 ├── Makefile                    # Commands to spin up servers and launch app
 ├── src/
 │   ├── asr/                    # Speech-to-text logic
 │   ├── tts/                    # Text-to-speech synthesis
-│   ├── orchestration           # LangGraph agents (router, planner etc.)
-│   ├── llm                     # LLM API Call Utility
+│   ├── orchestration/           # LangGraph agents (router, planner etc.)
+│   ├── llm/                     # LLM API Call Utility
 │   ├── rag/                    # Private dataset indexing and retrieval
-│   ├── mcp/                    # MCP server + tool schemas
-│   └── ui/                     # Streamlit / frontend app
+│   └── mcp/                    # MCP server + tool schemas
 ├── data/                       # Amazon dataset slices or indexes
 ├── docs/                       # Detailed project documentation
 ├── notebooks/                  # Data prep & EDA
