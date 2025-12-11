@@ -495,6 +495,7 @@ if st.session_state.last_response:
     st.divider()
     with st.expander("Agent Step Log"):
         for i, step in enumerate(st.session_state.last_response["step_log"], 1):
-            st.markdown(f"**{i}.** {step}")
+            st.text(f"{i}. {step}")
+
 
 st.divider()
