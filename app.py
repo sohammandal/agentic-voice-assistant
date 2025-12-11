@@ -312,6 +312,19 @@ if st.session_state.last_response and st.session_state.last_query:
     st.info(f"**Your Question:** {st.session_state.last_query}")
 
 
+def render_raw_text(text: str, italic=False):
+    """Render text as raw HTML without Markdown, with optional italic style."""
+    safe = (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br>")
+    )
+    if italic:
+        safe = f"<em>{safe}</em>"
+    st.markdown(f"<p style='font-size:1.1rem;'>{safe}</p>", unsafe_allow_html=True)
+
+
 # ---- Input Logic ----
 if input_method == "Type Text":
     user_query = st.text_input("Enter your question:", key="text_input")
@@ -393,8 +406,8 @@ if st.session_state.last_response:
     # Show the text that's being read aloud
     first_para = extract_first_paragraph(st.session_state.last_response["text"])
     if first_para:
-        st.markdown(f"> {first_para}")
-    
+        render_raw_text(first_para, italic=True)
+
     if st.session_state.audio_response:
         st.audio(st.session_state.audio_response, format="audio/wav")
 

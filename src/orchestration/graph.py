@@ -312,7 +312,8 @@ def planner_agent(state: LGState) -> LGState:
         "use_web": true,
         "rag_top_k": 10,
         "web_max_results": 5,
-        "rag_filters": {"category": "curtain"}
+        "rag_filters": {"category": "curtain"},
+        "reasoning": "User wants eco-friendly cleaner under $15, so search both catalog and live web"
       }
     """
 
@@ -324,16 +325,14 @@ def planner_agent(state: LGState) -> LGState:
         "Given the user's request and known preferences, decide which sources to use:\n"
         "- Private catalog via rag.search\n"
         "- Live web via web.search\n"
-        "Also infer a high-level product category and any useful filters.\n\n"
+        "Also provide reasoning for your decisions.\n\n"
         "Return STRICT JSON ONLY in this format:\n"
         "{\n"
         '  "use_rag": true,\n'
         '  "use_web": true,\n'
         '  "rag_top_k": 10,\n'
         '  "web_max_results": 5,\n'
-        '  "rag_filters": {\n'
-        '      "category": "curtain"\n'
-        "  }\n"
+        '  "reasoning": "User wants eco-friendly cleaner under $15, so search both catalog and live web for best options"\n'
         "}\n"
         "If you are unsure about filters, set rag_filters to an empty object {}.\n"
     )
@@ -354,6 +353,7 @@ def planner_agent(state: LGState) -> LGState:
         "rag_top_k": DEFAULT_TOP_K_RAG,
         "web_max_results": DEFAULT_MAX_WEB_RESULTS,
         "rag_filters": {},
+        "reasoning": "Default plan: search both catalog and live web",
     }
 
     try:
@@ -391,7 +391,8 @@ def planner_agent(state: LGState) -> LGState:
     log.append(
         f"Planner decided use_rag={plan.get('use_rag')} "
         f"use_web={plan.get('use_web')} "
-        f"rag_filters={plan.get('rag_filters')}"
+        f"rag_filters={plan.get('rag_filters')} | "
+        f"Reasoning: {plan.get('reasoning', 'N/A')}"
     )
     state["step_log"] = log
 
