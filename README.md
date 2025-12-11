@@ -22,19 +22,19 @@ It uses:
 ```
 agentic-voice-assistant/
 ├── app.py                      # Streamlit entrypoint
-├── main.py                     # Entry point
+├── cli.py                      # Entrypoint for CLI
 ├── Makefile                    # Commands to spin up servers and launch app
 ├── src/
 │   ├── asr/                    # Speech-to-text logic
 │   ├── tts/                    # Text-to-speech synthesis
-│   ├── orchestration/           # LangGraph agents (router, planner etc.)
-│   ├── llm/                     # LLM API Call Utility
+│   ├── orchestration/          # LangGraph agents (router, planner etc.)
+│   ├── llm/                    # LLM API Call Utility
 │   ├── rag/                    # Private dataset indexing and retrieval
 │   └── mcp/                    # MCP server + tool schemas
-├── data/                       # Amazon dataset slices or indexes
+├── data/                       # Amazon dataset slices (gitignored)
 ├── docs/                       # Detailed project documentation
 ├── notebooks/                  # Data prep & EDA
-├── vector_store/               # Local directory with Chrome DB (gitignored)
+├── vector_store/               # Local Chrome DB (gitignored)
 ├── pyproject.toml              # Project and dev config
 ├── uv.lock                     # Locked dependencies
 ├── .pre-commit-config.yaml     # Pre-commit hooks for linting/formatting
