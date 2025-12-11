@@ -239,11 +239,10 @@ def router_agent(state: LGState) -> LGState:
 
     # If blocked, short circuit with a safe response
     if safety.get("blocked"):
-        state["intent"] = "clarification"
+        state["intent"] = "blocked"
         state["last_query"] = user_text
         state["response_text"] = (
-            "I am not able to help with potentially dangerous or restricted products. "
-            "I can help you find everyday household items and common cleaning products instead."
+            "I can’t help with that request. Please ask about safe, legal household items instead."
         )
         log = state.get("step_log", [])
         log.append("Router blocked unsafe request based on keyword allowlist.")
@@ -323,10 +322,10 @@ def router_decision(state: LGState) -> str:
 
     intent = state.get("intent", "product_discovery")
 
-    # If the router flagged this as unsafe, always go to clarification agent
+    # If the router flagged this as unsafe, jump straight to the final response
     safety = state.get("safety_flags", {}) or {}
     if safety.get("blocked"):
-        return "clarification_agent"
+        return "response_synthesizer"
 
     # Comparison: only valid if we already have data to compare
     if intent == "compare":
@@ -1003,6 +1002,7 @@ graph.add_conditional_edges(
         "planner_agent": "planner_agent",
         "comparison_agent": "comparison_agent",
         "clarification_agent": "clarification_agent",
+        "response_synthesizer": "response_synthesizer",
     },
 )
 
