@@ -13,9 +13,11 @@ import os
 import re
 import tempfile
 
+import pandas as pd
 import soundfile as sf
 import streamlit as st
 from num2words import num2words
+from streamlit import dataframe
 
 from src.asr.asr import ASRProcessor
 from src.orchestration.graph import initialize_state, run_graph
@@ -134,7 +136,7 @@ def fix_section_headers(text: str) -> str:
             )
             # Rebuild with single emoji and single bold
             emoji = "🛒" if in_catalog else "🌐"
-            result_lines.append(f"**{emoji} {clean}**")
+            result_lines.append(f"<strong>{emoji} {clean}</strong>")
         else:
             result_lines.append(line)
 
@@ -195,6 +197,66 @@ def get_remaining_content(text):
     if len(parts) > 1:
         return fix_section_headers(parts[1])
     return ""
+
+
+def render_raw_text(text: str, italic=False):
+    """Render text as raw HTML without Markdown, with optional italic style."""
+    safe = (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br>")
+    )
+    if italic:
+        safe = f"<em>{safe}</em>"
+    st.markdown(f"<p style='font-size:1.1rem;'>{safe}</p>", unsafe_allow_html=True)
+
+
+def build_product_table(text: str):
+    """
+    Parse the retrieved product section and convert it into a clean DataFrame.
+    Works with both catalog and live item formats.
+    """
+    blocks = [b.strip() for b in text.split("\n\n") if b.strip()]
+    rows = []
+
+    for block in blocks:
+        title_match = re.search(r"\*\*(.*?)\*\*", block)
+        title = title_match.group(1).strip() if title_match else ""
+
+        sku_match = re.search(r"SKU:\s*([A-Za-z0-9]+)", block)
+        sku = sku_match.group(1) if sku_match else ""
+
+        price_match = re.search(r"Price:\s*\$?([0-9.]+)", block)
+        price = price_match.group(1) if price_match else ""
+
+        brand_match = re.search(r"Brand:\s*(.*?)\n", block)
+        brand = brand_match.group(1).strip() if brand_match else ""
+
+        weight_match = re.search(r"Weight:\s*([0-9.]+.*?)\n", block)
+        weight = weight_match.group(1).strip() if weight_match else ""
+
+        source_match = re.search(r"Source:\s*(.*?)\n", block)
+        source = source_match.group(1).strip() if source_match else ""
+
+        url_match = re.search(r"URL:\s*(https?://\S+)", block)
+        url = url_match.group(1) if url_match else ""
+
+        rows.append(
+            {
+                "Title": title,
+                "Price": price,
+                "Brand": brand,
+                "Weight": weight,
+                "Source": source,
+                "SKU / URL": sku if sku else url,
+            }
+        )
+
+    if not rows:
+        return None
+
+    return pd.DataFrame(rows)
 
 
 # ---- Page Layout Logic ----
@@ -312,19 +374,6 @@ if st.session_state.last_response and st.session_state.last_query:
     st.info(f"**Your Question:** {st.session_state.last_query}")
 
 
-def render_raw_text(text: str, italic=False):
-    """Render text as raw HTML without Markdown, with optional italic style."""
-    safe = (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\n", "<br>")
-    )
-    if italic:
-        safe = f"<em>{safe}</em>"
-    st.markdown(f"<p style='font-size:1.1rem;'>{safe}</p>", unsafe_allow_html=True)
-
-
 # ---- Input Logic ----
 if input_method == "Type Text":
     user_query = st.text_input("Enter your question:", key="text_input")
@@ -413,6 +462,14 @@ if st.session_state.last_response:
 
     remaining = get_remaining_content(st.session_state.last_response["text"])
     if remaining:
+        # Try to construct a comparison table from the remaining text
+        table_df = build_product_table(remaining)
+        if table_df is not None and not table_df.empty:
+            st.divider()
+            st.subheader("Comparison Table")
+            table_df.index = [""] * len(table_df)  # hide index labels
+            st.table(table_df)
+
         st.divider()
         st.markdown(remaining)
 
