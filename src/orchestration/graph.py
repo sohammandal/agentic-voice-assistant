@@ -153,21 +153,50 @@ def extract_intent(llm_output: str) -> str:
     return "product_discovery"
 
 
+def _infer_brand_from_title(title: str) -> str:
+    """
+    Fallback: infer brand as the leading token(s) of the title until
+    we hit a token that contains a digit.
+
+    Example:
+        'd-c-fix 96445 Spring Chapel/Tulia Window Film ...'
+        -> 'd-c-fix'
+    """
+    if not title:
+        return ""
+    tokens = title.split()
+    brand_tokens: List[str] = []
+    for tok in tokens:
+        if any(ch.isdigit() for ch in tok):
+            break
+        brand_tokens.append(tok)
+    return " ".join(brand_tokens).strip()
+
+
 def format_product_card(product: RagProduct) -> str:
     """
     Simple formatter for catalog (private) products.
     """
     out = f"🛒 **{product.title}**\n"
-    out += f"- SKU: `{product.sku}`\n"
+    out += f"- SKU: {product.sku}\n"
     if product.price is not None:
         out += f"- Price: ${product.price}\n"
-    if product.brand:
-        out += f"- Brand: {product.brand}\n"
+
+    # Use stored brand, but if it's missing or suspiciously short,
+    # fall back to inferring from the title.
+    brand = (product.brand or "").strip()
+    if not brand or len(brand) <= 1:
+        inferred = _infer_brand_from_title(product.title or "")
+        if inferred:
+            brand = inferred
+
+    if brand:
+        out += f"- Brand: {brand}\n"
+
     if product.model_number:
         out += f"- Model: {product.model_number}\n"
     if product.shipping_weight_lbs:
         out += f"- Weight: {product.shipping_weight_lbs} lbs\n"
-    out += f"- Catalog doc_id: `{product.doc_id}`\n"
     out += "- Source: Catalog (Private Amazon-2020)\n"
     return out
 
@@ -870,13 +899,20 @@ def response_synthesizer(state: LGState) -> LGState:
     # Populate catalog items with richer metadata
     for p in rag_items[:3]:
         meta = getattr(p, "raw_metadata", {}) or {}
+
+        brand = (p.brand or "").strip()
+        if not brand or len(brand) <= 1:
+            inferred = _infer_brand_from_title(p.title or "")
+            if inferred:
+                brand = inferred
+
         summary_payload["catalog_items"].append(
             {
                 "title": p.title,
                 "price": p.price,
-                "brand": p.brand,
+                "brand": brand,
                 "rating": p.rating,
-                # NEW: richer info
+                # NEW: richer info (unchanged below)
                 "model_number": p.model_number,
                 "shipping_weight_lbs": p.shipping_weight_lbs,
                 "features": meta.get("features"),
