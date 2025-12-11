@@ -22,6 +22,7 @@ It uses:
 ```
 agentic-voice-assistant/
 ├── main.py                     # Entry point
+├── Makefile                    # Commands to spin up servers and launch app
 ├── src/
 │   ├── asr/                    # Speech-to-text logic
 │   ├── tts/                    # Text-to-speech synthesis
@@ -50,19 +51,27 @@ agentic-voice-assistant/
    cd agentic-voice-assistant
    ```
 
-2. **Install [uv](https://github.com/astral-sh/uv)**:
+2. **Set up environment variables:**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   > Add your API keys to `.env` (Groq, Serper, HF). See `.env.example` for required variables.
+
+3. **Install [uv](https://github.com/astral-sh/uv)**:
     ```bash
     curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
-3. **Install dependencies and set up virtual environment**:
+4. **Install dependencies and set up virtual environment**:
 
    ```bash
    uv sync
    source .venv/bin/activate
    ```
 
-4. **Set up pre-commit (run once):**
+5. **Set up pre-commit (run once):**
 
    ```bash
    pre-commit install
@@ -73,13 +82,13 @@ agentic-voice-assistant/
 
    > This installs Git hooks so checks run automatically on every commit - you only need to do this once.
 
-5. **(Optional) Run pre-commit on all files:**
+6. **(Optional) Run pre-commit on all files:**
 
    ```bash
    pre-commit run --all-files
    ```
 
-6. **Run the app:**
+7. **Run the app:**
 
    From the project root, run this command to start the RAG Server, MCP Server and Streamlit app:
 
@@ -87,7 +96,7 @@ agentic-voice-assistant/
    make run
    ```
 
-7. **Try the assistant:**
+8. **Try the assistant:**
 
    Ask a question like:
    * _Recommend window privacy films under $15_

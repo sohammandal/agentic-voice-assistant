@@ -156,7 +156,7 @@ def format_product_card(product: RagProduct) -> str:
     Simple formatter for catalog (private) products.
     """
     out = f"🛒 **{product.title}**\n"
-    out += f"- SKU: {product.sku}\n"
+    out += f"- SKU: `{product.sku}`\n"
     if product.price is not None:
         out += f"- Price: ${product.price}\n"
     if product.brand:
@@ -165,6 +165,7 @@ def format_product_card(product: RagProduct) -> str:
         out += f"- Model: {product.model_number}\n"
     if product.shipping_weight_lbs:
         out += f"- Weight: {product.shipping_weight_lbs} lbs\n"
+    out += f"- Catalog doc_id: `{product.doc_id}`\n"
     out += "- Source: Catalog (Private Amazon-2020)\n"
     return out
 
@@ -861,6 +862,8 @@ def response_synthesizer(state: LGState) -> LGState:
                     "You receive structured data about products from a private catalog "
                     "and from live web search.\n"
                     "Write a concise spoken answer (2 to 4 sentences) recommending up to 2 options.\n"
+                    "If both sources have relevant items, briefly compare them on "
+                    "factors such as price and features.\n"
                     "Respect the user's budget if provided.\n"
                     "Do not invent details that are not in the data. "
                     "Do not fabricate prices or ratings.\n"
