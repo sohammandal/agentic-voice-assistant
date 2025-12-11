@@ -214,18 +214,17 @@ def render_raw_text(text: str, italic=False):
 
 def build_product_table(text: str):
     """
-    Parse the retrieved product section and convert it into a clean DataFrame.
-    Works with both catalog and live item formats.
+    Parse the retrieved product section (markdown-ish text) and convert it
+    into a clean DataFrame. Works with both catalog and live item formats.
     """
+    # Split into product blocks separated by blank lines
     blocks = [b.strip() for b in text.split("\n\n") if b.strip()]
     rows = []
 
     for block in blocks:
+        # Try to pull out the bold product title
         title_match = re.search(r"\*\*(.*?)\*\*", block)
         title = title_match.group(1).strip() if title_match else ""
-
-        sku_match = re.search(r"SKU:\s*([A-Za-z0-9]+)", block)
-        sku = sku_match.group(1) if sku_match else ""
 
         price_match = re.search(r"Price:\s*\$?([0-9.]+)", block)
         price = price_match.group(1) if price_match else ""
@@ -236,11 +235,8 @@ def build_product_table(text: str):
         weight_match = re.search(r"Weight:\s*([0-9.]+.*?)\n", block)
         weight = weight_match.group(1).strip() if weight_match else ""
 
-        source_match = re.search(r"Source:\s*(.*?)\n", block)
+        source_match = re.search(r"Source:\s*([^\n]+)", block)
         source = source_match.group(1).strip() if source_match else ""
-
-        url_match = re.search(r"URL:\s*(https?://\S+)", block)
-        url = url_match.group(1) if url_match else ""
 
         rows.append(
             {
@@ -249,14 +245,15 @@ def build_product_table(text: str):
                 "Brand": brand,
                 "Weight": weight,
                 "Source": source,
-                "SKU / URL": sku if sku else url,
             }
         )
 
     if not rows:
         return None
 
-    return pd.DataFrame(rows)
+    # Make sure missing values do not show up as NaN
+    df = pd.DataFrame(rows).fillna("")
+    return df
 
 
 # ---- Page Layout Logic ----
@@ -465,6 +462,27 @@ if st.session_state.last_response:
         # Try to construct a comparison table from the remaining text
         table_df = build_product_table(remaining)
         if table_df is not None and not table_df.empty:
+            # Fill any remaining NaNs with empty strings
+            table_df = table_df.fillna("")
+
+            # Infer missing Source values:
+            # - If SKU / URL starts with http assume Live Web
+            # - Otherwise assume Catalog
+            def infer_source(row):
+                if row.get("Source"):
+                    return row["Source"]
+                return "Unknown"
+
+            table_df["Source"] = table_df.apply(infer_source, axis=1)
+
+            # Optional: make weight display nicer
+            table_df["Weight"] = table_df["Weight"].apply(
+                lambda w: f"{w}" if not w or "lbs" in str(w) else f"{w} lbs"
+            )
+
+            # Optional: if you want a single ID column instead of "SKU / URL"
+            # table_df.rename(columns={"SKU / URL": "ID / Link"}, inplace=True)
+
             st.divider()
             st.subheader("Comparison Table")
             table_df.index = [""] * len(table_df)  # hide index labels
