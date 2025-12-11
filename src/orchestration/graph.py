@@ -180,7 +180,7 @@ def format_product_card(product: RagProduct) -> str:
     Simple formatter for catalog (private) products.
     """
     out = f"🛒 **{product.title}**\n"
-    out += f"- SKU: {product.sku}\n"
+    out += f"- SKU: `{product.sku}`\n"
     if product.price is not None:
         out += f"- Price: ${product.price}\n"
 
@@ -199,6 +199,10 @@ def format_product_card(product: RagProduct) -> str:
         out += f"- Model: {product.model_number}\n"
     if product.shipping_weight_lbs:
         out += f"- Weight: {product.shipping_weight_lbs} lbs\n"
+
+    if getattr(product, "doc_id", None):
+        out += f"- Doc ID: `{product.doc_id}`\n"
+
     out += "- Source: Catalog (Private Amazon-2020)\n"
     return out
 
