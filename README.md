@@ -97,6 +97,25 @@ agentic-voice-assistant/
    make run
    ```
 
+   **For Windows** (or if `make` isn't available), start these in separate terminals:
+
+   **Terminal 1 - RAG Server:**
+   ```bash
+   uv run python -m src.rag.run_service start
+   ```
+   Check status: `uv run python -m src.rag.run_service status`  
+   Stop: `uv run python -m src.rag.run_service stop`
+
+   **Terminal 2 - MCP Server:**
+   ```bash
+   uv run python -m src.mcp.mcp_server
+   ```
+
+   **Terminal 3 - Streamlit App:**
+   ```bash
+   uv run streamlit run app.py
+   ```
+
 8. **Try the assistant:**
 
    Ask a question like:
