@@ -91,7 +91,7 @@ The graph is defined in `src/orchestration/graph.py` using `langgraph.graph.Stat
                                │
                                ▼
                        ┌────────────────┐
-                       │  ROUTER AGENT │
+                       │  ROUTER AGENT  │
                        └───────┬────────┘
                                │
                ┌───────────────┼─────────────────────┐
@@ -111,7 +111,7 @@ The graph is defined in `src/orchestration/graph.py` using `langgraph.graph.Stat
          ▼                        ▼                    ▼
    ┌────────────────────────────────────────────────────────┐
    │                 RESPONSE SYNTHESIZER                   │
-   │  Final answer for UI and TTS                          │
+   │  Final answer for UI and TTS                           │
    └────────────────────────────────────────────────────────┘
                                │
                                ▼
