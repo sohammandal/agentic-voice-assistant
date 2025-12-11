@@ -121,6 +121,7 @@ def initialize_state() -> LGState:
         response_text
         step_log
         plan
+        safety_flags
     """
     return {
         "user_utterance": None,
@@ -132,6 +133,7 @@ def initialize_state() -> LGState:
         "response_text": None,
         "step_log": [],
         "plan": {},
+        "safety_flags": {},
     }
 
 
@@ -208,6 +210,45 @@ CRITICAL RULE FOR COMPARISON:
 
 def router_agent(state: LGState) -> LGState:
     user_text = state.get("user_utterance", "") or ""
+    lower = user_text.lower()
+
+    # Initialize or reuse safety flags
+    safety = state.get("safety_flags", {}) or {}
+
+    # Very simple allowlist / blocklist for dangerous product domains
+    banned_keywords = [
+        "explosive",
+        "bomb",
+        "pesticide",
+        "poison",
+        "rat poison",
+        "cyanide",
+        "molotov",
+        "weapon",
+        "gunpowder",
+    ]
+
+    if any(k in lower for k in banned_keywords):
+        safety["blocked"] = True
+        safety["reason"] = "disallowed or dangerous product category"
+    else:
+        safety["blocked"] = False
+        safety["reason"] = None
+
+    state["safety_flags"] = safety
+
+    # If blocked, short circuit with a safe response
+    if safety.get("blocked"):
+        state["intent"] = "clarification"
+        state["last_query"] = user_text
+        state["response_text"] = (
+            "I am not able to help with potentially dangerous or restricted products. "
+            "I can help you find everyday household items and common cleaning products instead."
+        )
+        log = state.get("step_log", [])
+        log.append("Router blocked unsafe request based on keyword allowlist.")
+        state["step_log"] = log
+        return state
 
     # If empty input -> default to product discovery
     if not user_text.strip():
@@ -281,6 +322,11 @@ def router_decision(state: LGState) -> str:
     """
 
     intent = state.get("intent", "product_discovery")
+
+    # If the router flagged this as unsafe, always go to clarification agent
+    safety = state.get("safety_flags", {}) or {}
+    if safety.get("blocked"):
+        return "clarification_agent"
 
     # Comparison: only valid if we already have data to compare
     if intent == "compare":
