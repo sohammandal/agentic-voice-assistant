@@ -383,6 +383,11 @@ if st.session_state.last_response:
     st.divider()
     st.header("Assistant Response")
 
+    # Show the text that's being read aloud
+    first_para = extract_first_paragraph(st.session_state.last_response["text"])
+    if first_para:
+        st.markdown(f"> {first_para}")
+    
     if st.session_state.audio_response:
         st.audio(st.session_state.audio_response, format="audio/wav")
 
