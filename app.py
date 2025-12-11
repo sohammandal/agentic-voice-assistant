@@ -4,6 +4,7 @@ Streamlit app for Agentic Voice Assistant
 
 # Load environment variables
 from dotenv import find_dotenv, load_dotenv
+
 load_dotenv(find_dotenv() or ".env")
 
 # Import necessary libraries
@@ -64,7 +65,7 @@ if "tts_processor" not in st.session_state:
 
 # ---- Helper Function Library ----
 def preprocess_text_for_tts(text):
-    """Convert numbers to words for TTS and remove markdown asterisks. """
+    """Convert numbers to words for TTS and remove markdown asterisks."""
     text = text.replace("*", "")
 
     def replace_dollar(match):
@@ -81,7 +82,7 @@ def preprocess_text_for_tts(text):
 
 
 def fix_section_headers(text: str) -> str:
-    """Clean up headers and rebuild item lines to ensure clean formatting. """
+    """Clean up headers and rebuild item lines to ensure clean formatting."""
     # Clean Headers
     text = re.sub(
         r"(?m)^.*Catalog Items \(Private Amazon-2020 Dataset\).*?:\s*(.*)",
@@ -141,7 +142,7 @@ def fix_section_headers(text: str) -> str:
 
 
 def process_audio_file(audio_file):
-    """Process audio with robust temp file cleanup. """
+    """Process audio with robust temp file cleanup."""
     tmp_path = None
     try:
         # Save upload to temp file for ASR
@@ -165,7 +166,7 @@ def process_audio_file(audio_file):
 
 
 def generate_tts_audio(text):
-    """Generate TTS audio via TTSProcessor from custom TTS module. """
+    """Generate TTS audio via TTSProcessor from custom TTS module."""
     try:
         processed_text = preprocess_text_for_tts(text)
         waveform = st.session_state.tts_processor.decode_audio(processed_text)
@@ -183,13 +184,13 @@ def generate_tts_audio(text):
 
 
 def extract_first_paragraph(text):
-    """Get the first paragraph from the response text. """
+    """Get the first paragraph from the response text."""
     parts = text.split("\n\n", 1)
     return parts[0] if parts else text
 
 
 def get_remaining_content(text):
-    """Get remaining content after the first paragraph, fixing headers. """
+    """Get remaining content after the first paragraph, fixing headers."""
     parts = text.split("\n\n", 1)
     if len(parts) > 1:
         return fix_section_headers(parts[1])
@@ -230,8 +231,14 @@ st.markdown(
 
 # Add title and sidebar
 # Use HTML for centering
-st.markdown("<h1 style='text-align: center; margin-bottom: 0; font-size: 3rem;'>Agentic Voice Assistant</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 1.5rem; font-weight: normal; margin-top: -15px;'>Voice-to-Voice AI for Product Discovery</p>", unsafe_allow_html=True)
+st.markdown(
+    "<h1 style='text-align: center; margin-bottom: 0; font-size: 3rem;'>Agentic Voice Assistant</h1>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<p style='text-align: center; font-size: 1.5rem; font-weight: normal; margin-top: -15px;'>Voice-to-Voice AI for Product Discovery</p>",
+    unsafe_allow_html=True,
+)
 
 with st.sidebar:
     st.header("Voice Input Options")
