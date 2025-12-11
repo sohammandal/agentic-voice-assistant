@@ -81,7 +81,28 @@ RAG_SEARCH_SCHEMA = {
     },
     "output_schema": {
         "type": "object",
-        "properties": {"results": {"type": "array", "items": {"type": "object"}}},
+        "properties": {
+            "results": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "sku": {"type": "string"},
+                        "title": {"type": "string"},
+                        "price": {"type": ["number", "null"]},
+                        "rating": {"type": ["number", "null"]},
+                        "brand": {"type": ["string", "null"]},
+                        "ingredients": {"type": ["string", "null"]},
+                        "doc_id": {"type": "string"},
+                        "shipping_weight_lbs": {"type": ["number", "null"]},
+                        "model_number": {"type": ["string", "null"]},
+                        "raw_metadata": {"type": "object"},
+                    },
+                    "required": ["sku", "title", "doc_id"],
+                },
+            }
+        },
+        "required": ["results"],
     },
 }
 
@@ -99,7 +120,25 @@ WEB_SEARCH_SCHEMA = {
     },
     "output_schema": {
         "type": "object",
-        "properties": {"results": {"type": "array", "items": {"type": "object"}}},
+        "properties": {
+            "results": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "url": {"type": "string"},
+                        "snippet": {"type": "string"},
+                        "price": {"type": ["number", "null"]},
+                        "availability": {"type": ["string", "null"]},
+                        "source": {"type": "string"},
+                        "raw": {"type": "object"},
+                    },
+                    "required": ["title", "url", "source"],
+                },
+            }
+        },
+        "required": ["results"],
     },
 }
 
@@ -167,7 +206,13 @@ def _call_web_search(payload: Dict[str, Any]) -> Dict[str, Any]:
             }
         )
 
-    _log("web.search_response", {"count": len(out)})
+    _log(
+        "web.search_response",
+        {
+            "count": len(out),
+            "urls": [item["url"] for item in out if item.get("url")],
+        },
+    )
     return {"results": out}
 
 

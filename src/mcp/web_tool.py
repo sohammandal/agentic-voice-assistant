@@ -21,7 +21,6 @@ Includes:
 """
 
 import time
-from functools import lru_cache
 from typing import Dict, List, Optional
 
 import requests
@@ -44,6 +43,8 @@ if not SERPER_API_KEY:
 SERPER_URL = "https://google.serper.dev/search"
 
 _last_call_timestamp = 0.0
+_serper_cache: Dict[str, Dict] = {}
+_serper_cache_timestamps: Dict[str, float] = {}
 
 
 # --------------------------------------------------------------------------
@@ -64,21 +65,34 @@ def _rate_limit():
 # --------------------------------------------------------------------------
 # LRU Cache for responses
 # --------------------------------------------------------------------------
-@lru_cache(maxsize=256)
 def _cached_serper_request(query: str) -> Dict:
-    """Cached Serper request (wrapped inside a function so LRU can cache)."""
+    """Serper request with simple in memory TTL cache."""
+    now = time.time()
+
+    # Return cached result if still fresh
+    if query in _serper_cache:
+        ts = _serper_cache_timestamps.get(query, 0.0)
+        if now - ts < WEB_SEARCH_TTL_SECONDS:
+            return _serper_cache[query]
+
+    # Otherwise call Serper
     _rate_limit()
 
     headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
-
     payload = {"q": query}
 
     resp = requests.post(SERPER_URL, json=payload, headers=headers, timeout=10)
 
     if resp.status_code != 200:
-        return {"organic": []}
+        data = {"organic": []}
+    else:
+        data = resp.json()
 
-    return resp.json()
+    # Store in cache with timestamp
+    _serper_cache[query] = data
+    _serper_cache_timestamps[query] = now
+
+    return data
 
 
 # --------------------------------------------------------------------------

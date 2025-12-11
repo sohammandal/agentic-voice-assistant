@@ -32,6 +32,7 @@ agentic-voice-assistant/
 │   ├── mcp/                    # MCP server + tool schemas
 │   └── ui/                     # Streamlit / frontend app
 ├── data/                       # Amazon dataset slices or indexes
+├── docs/                       # Detailed project documentation
 ├── notebooks/                  # Data prep & EDA
 ├── vector_store/               # Local directory with Chrome DB (gitignored)
 ├── pyproject.toml              # Project and dev config
@@ -153,3 +154,13 @@ uv sync
 | Voice Output | OpenAI / ElevenLabs TTS             |
 | Frontend     | Streamlit                           |
 | Dev Tools    | `uv`, `ruff`, `pre-commit`          |
+
+## Documentation
+
+Full technical documentation has been moved into the `docs/` folder:
+
+- **`docs/architecture.md`** – LangGraph multi-agent design, planner rules, routing, safety
+- **`docs/rag-overview.md`** – private dataset indexing, embeddings, hybrid retrieval
+- **`docs/mcp-tools.md`** – MCP server, tool schemas, discovery, caching, logging
+- **`docs/prompts.md`** – all system prompts, tool prompts, planner rubric, safety prompts
+
