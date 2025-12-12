@@ -22,6 +22,7 @@ It uses:
 Full technical documentation has been moved into the `docs/` folder:
 
 - **`docs/architecture.md`** – LangGraph multi-agent design, planner rules, routing, safety
+- **`docs/eda.md`** – Data pre-processing and cleaning steps
 - **`docs/rag-overview.md`** – Private dataset indexing, embeddings, hybrid retrieval
 - **`docs/mcp-tools.md`** – MCP server, tool schemas, discovery, caching, logging
 - **`docs/prompts.md`** – All system prompts, tool prompts, planner rubric, safety prompts
