@@ -25,6 +25,7 @@ Full technical documentation has been moved into the `docs/` folder:
 - **`docs/rag-overview.md`** – Private dataset indexing, embeddings, hybrid retrieval
 - **`docs/mcp-tools.md`** – MCP server, tool schemas, discovery, caching, logging
 - **`docs/prompts.md`** – All system prompts, tool prompts, planner rubric, safety prompts
+- **`docs/slide-deck.pdf`** – Final deck for in-class presentation with demo video
 
 ---
 
